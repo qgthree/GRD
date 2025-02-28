@@ -1,0 +1,27 @@
+.component_header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  background-color: #651D32;
+  color: #fff;
+  padding: 12px 15px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 400;
+}
+.component_body {
+  padding: 15px;
+  text-align: left;
+  overflow: hidden;
+}
+.header-left {
+  display: inline-flex;
+  justify-content: left;
+}
+.header-right {
+  justify-content: right;
+  display: inline-flex;
+}
+.header-right img {
+  cursor: pointer;
+}

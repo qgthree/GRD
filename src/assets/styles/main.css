@@ -1,0 +1,181 @@
+/* scrollbar */
+@import 'vue3-perfect-scrollbar/style.css';
+
+@font-face {
+  font-family: "SourceSansPro";
+  src: url("../fonts/SourceSansPro-ExtraLight.otf");
+  font-weight: 200;
+}
+@font-face {
+  font-family: "SourceSansPro";
+  src: url("../fonts/SourceSansPro-Light.otf");
+  font-weight: 300;
+}
+@font-face {
+  font-family: "SourceSansPro";
+  src: url("../fonts/SourceSansPro-Regular.otf");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "SourceSansPro";
+  src: url("../fonts/SourceSansPro-Semibold.otf");
+  font-weight: 600;
+}
+@font-face {
+  font-family: "SourceSansPro";
+  src: url("../fonts/SourceSansPro-Bold.otf");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "SourceSansPro";
+  src: url("../fonts/SourceSansPro-Black.otf");
+  font-weight: 800;
+}
+
+/* main */
+html {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+  -webkit-box-sizing: inherit;
+  -moz-box-sizing: inherit;
+  box-sizing: inherit;
+}
+h1, h2, h3, h4 {
+  margin: 0px;
+  margin-bottom: 10px;
+}
+a {
+  text-decoration: none;
+  color: #0073e6;
+}
+p {
+  text-align: left;
+}
+body {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 300;
+  color: #000;
+  background-color: #fbfbf8;
+}
+#app {
+  font-family: 'SourceSansPro', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+strong {
+  font-weight: 600;
+}
+
+/* inputs */
+
+:root {
+  --width-of-switch: 3.5em;
+  --height-of-switch: 2em;
+  /* size of the icon : sun & moon */
+  --size-of-icon: 1.4em;
+  /* inline padding for the switch */
+  --slider-offset: 0.3em;
+}
+
+.switch input {
+  /* hide the input */
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.switch {
+  display: block;
+  position: relative;
+  width: var(--width-of-switch);
+  height: var(--height-of-switch);
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #f4f4f5;
+  transition: 0.4s;
+  border-radius: 30px;
+}
+
+.slider::before {
+  position: absolute;
+  content: "";
+  height: var(--size-of-icon, 1.4em);
+  width: var(--size-of-icon, 1.4em);
+  border-radius: 20px;
+  left: var(--slider-offset, 0.3em);
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(40deg, #D48D00, #82204A 70%);
+  transition: 0.4s;
+}
+
+input:checked + .slider::before {
+  left: calc(100% - (var(--size-of-icon, 1.4em) + var(--slider-offset, 0.3em)));
+}
+
+/* simple inputs */
+
+input[type=text] {
+  appearance: none;
+  border: none;
+  outline: none;
+  border-bottom: 0.08em solid #BA0C2F;
+  background: rgba(186, 12, 47, .1);
+  border-radius: 0.4em 0.4em 0 0;
+  padding: 0.5em;
+  color: #651D32;
+  font-size: 16px;
+}
+
+input:placeholder-shown {
+  font-style: italic;
+}
+
+input[type=checkbox] {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background-color: #fff;
+  margin: 0;
+  font: inherit;
+  color: currentColor;
+  width: 1.15em;
+  height: 1.15em;
+  border: 0.15em solid #651D32;
+  border-radius: 0.15em;
+  transform: translateY(-0.075em);
+  display: grid;
+  place-content: center;
+}
+input[type=checkbox]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em #651D32;
+  background-color: CanvasText;
+  -webkit-clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+          clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform-origin: left top;
+}
+input[type=checkbox]:checked::before {
+  transform: scale(1);
+}
