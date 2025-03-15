@@ -160,7 +160,7 @@ const formatServiceName = (service) => {
   }
   #vlist input::placeholder {
     font-weight: 300;
-    font-family: SourceSansPro;
+    font-family: Source Sans 3;
   }
 
   .searchResultsDetails {
