@@ -9,7 +9,7 @@ import FilterTypeSelector from '@/components/FilterTypeSelector.vue'
   <div class="modal-mask">
     <div id="filters">
       <div class="component_header">
-        <div class="header-left">Filters</div>
+        <div class="header-left">Filters (development in progress)</div>
         <div class="header-right">
           <img :src="close" @click="useFiltersStore().toggleFiltersView('hidden')" />
         </div>
