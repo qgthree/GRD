@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useVendorStore } from '@/stores/vendorStore';
+import { useLocationStore } from '@/stores/locationStore';
 import Applink from '@/components/Applink.vue'
 import print from "@/assets/images/print.svg";
 import close from "@/assets/images/close.svg";
@@ -10,6 +11,9 @@ import close from "@/assets/images/close.svg";
 // list of vendors, already filtered per url params
 const vendorStore = useVendorStore();
 const { filteredVendors } = storeToRefs(vendorStore);
+const countries = useLocationStore().countries;
+
+const getCountryName = (ISO3) => countries.find((country) => country.ISO3 == ISO3).name;
 
 // update vendors to display search results
 let vendorSearch = defineModel();
@@ -25,7 +29,7 @@ let searchFilteredVendors = computed(() => {
       vendor.email && vendor.email.toLowerCase().includes(search) ||
       vendor['primary_contact(s)'] && vendor['primary_contact(s)'].toLowerCase().includes(search) ||
       vendor.phone && vendor.phone.toLowerCase().includes(search) ||
-      vendor.region && vendor.region.toLowerCase().includes(search)
+      vendor.region && vendor.region.includes(search)
     )
   });
 });
@@ -75,11 +79,11 @@ const formatServiceName = (service) => {
     </div>
     <div class="component_body" :key="listKey">
       <PerfectScrollbar id="vendorScroll">
-        <div class="searchResultsDetails" v-if="vendorSearch"><strong>{{ searchFilteredVendors.length }}</strong> <span v-if="searchFilteredVendors.length === 1"><strong>vendor</strong> includes</span><span v-else><strong>vendors</strong> include</span> details that contain your search.</div>
+        <div class="searchResultsDetails" v-if="vendorSearch"><strong>{{ searchFilteredVendors.length }}</strong> <span v-if="searchFilteredVendors.length === 1"><strong>vendor</strong> contains</span><span v-else><strong>vendors</strong> contain</span> details that include your search.</div>
         <transition-group name="list-card" tag="div">
           <div class="list-card" v-for="vendor in searchFilteredVendors" :key="vendor.id" @click="toggleVisibility(vendor.id, $event)">
             <div class="list-data list-data_title-wrapper">
-              <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.region === 'Global'" class="global list-data_item">global</div>
+              <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.region.includes('Global')" class="global list-data_item">global</div>
             </div>
             <div v-show="vendor.isVisible" class="list-data_details">
               <div class="list-data">
@@ -92,7 +96,7 @@ const formatServiceName = (service) => {
                 <span class="list-data_label">
                   Countries of Operation:
                 </span>
-                <span v-for="(country, index) in vendor.country_location" :key="index">{{ country }}</span>
+                <span v-for="(country, index) in vendor.country_location" :key="index">{{ getCountryName(country) }}<span v-if="index < vendor.country_location.length - 1">, </span></span>
               </div>
               <div class="list-data">
                 <span class="list-data_label">

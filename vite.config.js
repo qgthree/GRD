@@ -10,6 +10,7 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
+  // base: "https://qgthree.github.io/grd-demo/",
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

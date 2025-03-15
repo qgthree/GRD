@@ -84,9 +84,9 @@ const regionLayer = (features) => {
 
       layer.on("click", (e) => {
         resetHighlight(feature.properties.BHA_REGION, map);
-        router.push({ 
-          path: '/map', 
-          query: { region: feature.properties.BHA_REGION } 
+        router.push({
+          path: '/map',
+          query: { region: feature.properties.BHA_REGION }
         });
       });
     }
@@ -117,9 +117,9 @@ const countryLayer = (features) => {
 
         layer.on("click", (e) => {
           layer.setStyle({fillOpacity: leafSettings.features.lightOpacity});
-          router.push({ 
-            path: '/map', 
-            query: { country: feature.properties.ISO3 } 
+          router.push({
+            path: '/map',
+            query: { country: feature.properties.ISO3 }
           });
         });
       }
@@ -233,3 +233,6 @@ watch(() => route.query, (newQuery, oldQuery) => {
   font-weight: 500;
 }
 </style>
+
+
+

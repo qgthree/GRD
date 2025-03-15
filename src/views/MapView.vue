@@ -12,24 +12,13 @@ import spinner from "@/assets/images/infinite-spinner.svg";
 
 const route = useRoute();
 
-// load vendor data and update per url params
-const loadVendorData = async () => {
-  await useVendorStore().fetchVendors();
-  useVendorStore().updateVendors([route.query]);
-};
-
-// check if vendors were loaded
-const vendorsLoaded = () => {
-  return useVendorStore().filteredVendors && !useVendorStore().loading;
-}
-
 // Perform when component is first mounted
 onMounted(() => {
-  loadVendorData();
+  useVendorStore().updateVendors([route.query]);
 });
 
 // Perform when route changes
-watch(() => route.query, (newQuery, oldQuery) => {
+watch(() => route.query, (newQuery) => {
   useVendorStore().updateVendors([newQuery]);
   useFiltersStore().toggleFiltersView('hidden');
 });
@@ -42,14 +31,14 @@ watch(() => route.query, (newQuery, oldQuery) => {
       <Filters v-if="useFiltersStore().status !== 'hidden'" />
     </Transition>
     <Transition name="slide-fade-left">
-      <VendorList v-if="useVendorStore().show && vendorsLoaded()"/>
+      <VendorList v-if="useVendorStore().show && useVendorStore().filteredVendors"/>
     </Transition>
-    <Map v-if="vendorsLoaded()"/>
+    <Map v-if="useVendorStore().filteredVendors"/>
     <div v-else class="loading-map">
       <img style="width: 200px; height: auto;" :src="spinner"/>
     </div>
     <Transition name="slide-fade">
-      <WorldLegend v-if="!route.query.region && !route.query.country && vendorsLoaded()"/>
+      <WorldLegend v-if="!route.query.region && !route.query.country && useVendorStore().filteredVendors"/>
     </Transition>
   </div>
 </template>
