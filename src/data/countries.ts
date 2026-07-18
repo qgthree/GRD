@@ -1,10 +1,4 @@
-export interface Country {
-  name: string;
-  ISO3: string;
-  region: string;
-  type: string;
-  vendorCount?: number;
-}
+import type { Country } from '@/features/locations/types'
 
 // Static country metadata used for display names and region membership. The map
 // geometry itself lives in the GeoJSON files under src/features/map/data.

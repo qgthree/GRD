@@ -12,13 +12,13 @@ import type {
   RegionFeature
 } from "@/features/map/types";
 import { useMapData } from "@/features/map/composables/useMapData";
-import { createCountryLayer, createRegionLayer } from "@/features/map/utils/mapLayers";
-import { getMapSelection } from "@/features/map/utils/mapQuery";
+import { createBoundaryLayer } from "@/features/map/utils/mapLayers";
+import { getBoundarySelection } from "@/features/map/utils/mapQuery";
 import {
-  findRegionSetting,
-  setCountryViewport,
-  setDefaultViewport,
-  setRegionViewport
+  findBoundaryStyle,
+  setBoundaryViewport,
+  setFeatureViewport,
+  setDefaultViewport
 } from "@/features/map/utils/mapViewport";
 
 const router = useRouter();
@@ -26,6 +26,10 @@ const route = useRoute();
 const vendorStore = useVendorStore();
 const { leafSettings } = useMapSettingsStore() as { leafSettings: LeafSettings };
 const { data: mapData, loadMapData } = useMapData();
+const boundaryQueryKeys = {
+  parentKey: 'region',
+  childKey: 'country'
+};
 
 // Leaflet owns these objects outside Vue reactivity. Keeping them as plain
 // variables avoids unnecessary proxying and makes cleanup direct.
@@ -57,30 +61,42 @@ const setActiveLayer = (layer: L.GeoJSON) => {
   activeLayer.addTo(map);
 }
 
-const getRegion = (regionName: string) => findRegionSetting(leafSettings.region, regionName);
+const getBoundaryStyle = (boundaryName: string) => findBoundaryStyle(leafSettings.region, boundaryName);
 
-const createRegions = (features: RegionFeature[]) => {
-  // Region layers know how to render regions, while this component decides what
-  // a click should do in the app.
-  return createRegionLayer({
+const createParentBoundaries = (features: RegionFeature[]) => {
+  // Parent boundary layers render the broadest selectable geography. This
+  // component decides what a click should do in the app.
+  return createBoundaryLayer({
     features,
-    map,
     settings: leafSettings,
-    getRegion,
-    getVendorCount: (regionName) => vendorStore.regionVendorCount(regionName),
-    onRegionClick: (regionName) => router.push({ path: '/map', query: { region: regionName } })
+    map,
+    getBoundaryStyle,
+    getStyleKey: (feature) => feature.properties.BHA_REGION,
+    getLabel: (feature) => feature.properties.BHA_REGION,
+    getDetail: (feature) => `${vendorStore.regionVendorCount(feature.properties.BHA_REGION)} vendors`,
+    getHoverGroupKey: (feature) => feature.properties.BHA_REGION,
+    onFeatureClick: (feature) => router.push({
+      path: '/map',
+      query: { region: feature.properties.BHA_REGION }
+    })
   })
 }
 
-const createCountries = (features: CountryFeature[]) => {
-  // Country layers receive app behavior through callbacks for the same reason:
-  // the utility should not import router or stores directly.
-  return createCountryLayer({
+const createChildBoundaries = (features: CountryFeature[]) => {
+  // Child boundary layers receive app behavior through callbacks for the same
+  // reason: the utility should not import router or stores directly.
+  return createBoundaryLayer({
     features,
     settings: leafSettings,
-    getRegion,
-    getVendorCount: (countryCode) => vendorStore.countryVendorCount(countryCode),
-    onCountryClick: (countryCode) => router.push({ path: '/map', query: { country: countryCode } })
+    getBoundaryStyle,
+    interactive: features.length > 1,
+    getStyleKey: (feature) => feature.properties.BHA_Reg,
+    getLabel: (feature) => feature.properties.USG_Name,
+    getDetail: (feature) => `${vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0} vendors`,
+    onFeatureClick: (feature) => router.push({
+      path: '/map',
+      query: { country: feature.properties.ISO3 }
+    })
   })
 }
 
@@ -88,55 +104,55 @@ const renderMapSelection = (query: LocationQuery) => {
   // Route watchers can run before async map data has loaded.
   if (!mapData.value) return;
 
-  const selection = getMapSelection(query);
+  const selection = getBoundarySelection(query, boundaryQueryKeys);
 
   removeActiveLayer();
 
-  if (selection.type === 'home') {
-    // No URL selection means the user sees all BHA regions.
-    setActiveLayer(createRegions(mapData.value.regions.features));
+  if (selection.type === 'none') {
+    // No URL selection means the user sees all parent boundaries.
+    setActiveLayer(createParentBoundaries(mapData.value.parentBoundaries.features));
     setDefaultViewport(map, leafSettings);
     return;
   }
 
-  if (selection.type === 'regions') {
-    // Multiple selected regions still use region shapes and the broad map view.
-    const selectedRegions = mapData.value.regions.features.filter((feature) => {
-      return selection.regionNames.includes(feature.properties.BHA_REGION);
+  if (selection.type === 'parent-list') {
+    // Multiple selected parent boundaries still use the broad map view.
+    const selectedParentBoundaries = mapData.value.parentBoundaries.features.filter((feature) => {
+      return selection.ids.includes(feature.properties.BHA_REGION);
     })
 
-    setActiveLayer(createRegions(selectedRegions));
+    setActiveLayer(createParentBoundaries(selectedParentBoundaries));
     setDefaultViewport(map, leafSettings);
     return;
   }
 
-  if (selection.type === 'region') {
-    // One selected region drills into the countries inside that region.
-    const selectedCountries = mapData.value.countries.features.filter((feature) => {
-      return feature.properties.BHA_Reg === selection.regionName;
+  if (selection.type === 'parent') {
+    // One selected parent boundary drills into its child boundaries.
+    const selectedChildBoundaries = mapData.value.childBoundaries.features.filter((feature) => {
+      return feature.properties.BHA_Reg === selection.id;
     })
 
-    setActiveLayer(createCountries(selectedCountries));
-    setRegionViewport(map, getRegion(selection.regionName), leafSettings);
+    setActiveLayer(createChildBoundaries(selectedChildBoundaries));
+    setBoundaryViewport(map, getBoundaryStyle(selection.id), leafSettings);
     return;
   }
 
-  if (selection.type === 'countries') {
-    // Multiple selected countries show country shapes. If they are all in one
-    // region, zoom to that region; otherwise return to the broad map view.
-    const selectedCountries = mapData.value.countries.features.filter((feature) => {
-      return selection.countryCodes.includes(feature.properties.ISO3);
+  if (selection.type === 'child-list') {
+    // Multiple selected child boundaries show child shapes. If they are all in
+    // one parent boundary, zoom to that parent; otherwise use the broad view.
+    const selectedChildBoundaries = mapData.value.childBoundaries.features.filter((feature) => {
+      return selection.ids.includes(feature.properties.ISO3);
     })
 
-    setActiveLayer(createCountries(selectedCountries));
+    setActiveLayer(createChildBoundaries(selectedChildBoundaries));
 
-    const firstCountry = selectedCountries[0];
-    const allCountriesShareRegion = selectedCountries.every((feature) => {
-      return feature.properties.BHA_Reg === firstCountry?.properties.BHA_Reg;
+    const firstChildBoundary = selectedChildBoundaries[0];
+    const allChildBoundariesShareParent = selectedChildBoundaries.every((feature) => {
+      return feature.properties.BHA_Reg === firstChildBoundary?.properties.BHA_Reg;
     })
 
-    if (firstCountry && allCountriesShareRegion) {
-      setRegionViewport(map, getRegion(firstCountry.properties.BHA_Reg), leafSettings);
+    if (firstChildBoundary && allChildBoundariesShareParent) {
+      setBoundaryViewport(map, getBoundaryStyle(firstChildBoundary.properties.BHA_Reg), leafSettings);
       return;
     }
 
@@ -144,16 +160,16 @@ const renderMapSelection = (query: LocationQuery) => {
     return;
   }
 
-  // One selected country becomes a one-item array for layer creation, then uses
-  // the specific country's bounds/centroid for the viewport.
-  const selectedCountry = mapData.value.countries.features.find((feature) => {
-    return feature.properties.ISO3 === selection.countryCode;
+  // One selected child boundary becomes a one-item array for layer creation,
+  // then uses its bounds/centroid for the viewport.
+  const selectedChildBoundary = mapData.value.childBoundaries.features.find((feature) => {
+    return feature.properties.ISO3 === selection.id;
   })
-  const selectedCountries = selectedCountry ? [selectedCountry] : [];
-  const countryLayer = createCountries(selectedCountries);
+  const selectedChildBoundaries = selectedChildBoundary ? [selectedChildBoundary] : [];
+  const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries);
 
-  setActiveLayer(countryLayer);
-  setCountryViewport(map, selectedCountry, countryLayer);
+  setActiveLayer(childBoundaryLayer);
+  setFeatureViewport(map, selectedChildBoundary, childBoundaryLayer);
 }
 
 onMounted(async () => {

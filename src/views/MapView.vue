@@ -6,22 +6,29 @@ import WorldLegend from "@/features/map/components/WorldLegend.vue";
 import VendorList from '@/features/vendors/components/VendorList.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
-import { onMounted, watch } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import spinner from "@/assets/images/infinite-spinner.svg";
 
 const route = useRoute();
+const vendorStore = useVendorStore();
+const filtersStore = useFiltersStore();
+const isVendorDataReady = computed(() => Boolean(vendorStore.vendors.length));
+
+const updateRouteData = async (query: typeof route.query) => {
+  await vendorStore.updateVendors([query]);
+}
 
 // Initial vendor filtering must happen before the map/list rely on filtered data.
-onMounted(() => {
-  useVendorStore().updateVendors([route.query]);
+onMounted(async () => {
+  await updateRouteData(route.query);
 });
 
 // The URL drives both the vendor list and the map. Closing filters on route
 // change keeps the map visible after a user chooses a filter.
 watch(() => route.query, (newQuery) => {
-  useVendorStore().updateVendors([newQuery]);
-  useFiltersStore().toggleFiltersView('hidden');
+  void updateRouteData(newQuery);
+  filtersStore.toggleFiltersView('hidden');
 });
 </script>
 
@@ -29,17 +36,17 @@ watch(() => route.query, (newQuery) => {
   <div id="mapview">
     <Nav />
     <Transition name="fade">
-      <Filters v-if="useFiltersStore().status !== 'hidden'" />
+      <Filters v-if="filtersStore.status !== 'hidden'" />
     </Transition>
     <Transition name="slide-fade-left">
-      <VendorList v-if="useVendorStore().show && useVendorStore().filteredVendors"/>
+      <VendorList v-if="vendorStore.show && isVendorDataReady"/>
     </Transition>
-    <Map v-if="useVendorStore().filteredVendors"/>
+    <Map v-if="isVendorDataReady"/>
     <div v-else class="loading-map">
       <img style="width: 200px; height: auto;" :src="spinner"/>
     </div>
     <Transition name="slide-fade">
-      <WorldLegend v-if="!route.query.region && !route.query.country && useVendorStore().filteredVendors"/>
+      <WorldLegend v-if="!route.query.region && !route.query.country && isVendorDataReady"/>
     </Transition>
   </div>
 </template>

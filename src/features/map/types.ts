@@ -33,7 +33,7 @@ export interface MapFeatureCollection<TFeature> {
 
 // These settings are still stored in Pinia, but the explicit type lets map
 // helpers work without importing the store directly.
-export interface RegionSetting {
+export interface BoundaryStyleSetting {
   name: RegionName
   color: string
   center: number[]
@@ -54,15 +54,13 @@ export interface LeafSettings {
   minZoom: number
   maxZoom: number
   features: MapStyleSettings
-  region: RegionSetting[]
+  region: BoundaryStyleSetting[]
   mapOptions: L.MapOptions
 }
 
-// Normalized route-query state. Components should use this instead of branching
-// directly on raw query string values.
-export type MapSelection =
-  | { type: 'home' }
-  | { type: 'regions'; regionNames: string[] }
-  | { type: 'region'; regionName: string }
-  | { type: 'countries'; countryCodes: string[] }
-  | { type: 'country'; countryCode: string }
+export type BoundarySelection =
+  | { type: 'none' }
+  | { type: 'parent-list'; ids: string[] }
+  | { type: 'parent'; id: string }
+  | { type: 'child-list'; ids: string[] }
+  | { type: 'child'; id: string }

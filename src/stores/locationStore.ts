@@ -1,11 +1,29 @@
 import { defineStore } from 'pinia';
-import { countries } from '@/data/countries';
+import { getCountries } from '@/features/locations/api/locationDataSource';
+import type { Country } from '@/features/locations/types';
 
-// Country metadata is local data for now. Clone each record into state so any
-// UI-specific additions do not mutate the imported source array.
 export const useLocationStore = defineStore('locationStore', {
   state: () => ({
-    updated: false,
-    countries: countries.map((country) => ({ ...country }))
-  })
+    countries: [] as Country[],
+    loading: false,
+    error: null as string | null
+  }),
+  actions: {
+    async loadCountries() {
+      if (this.countries.length || this.loading) return;
+
+      this.loading = true;
+      this.error = null;
+
+      try {
+        this.countries = await getCountries();
+      }
+      catch (caughtError) {
+        this.error = caughtError instanceof Error ? caughtError.message : 'Unable to load countries';
+      }
+      finally {
+        this.loading = false;
+      }
+    }
+  }
 });

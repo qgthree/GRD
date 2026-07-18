@@ -1,5 +1,5 @@
-import type { Country } from '@/data/countries'
-import type { Vendor } from '@/stores/vendorStore'
+import type { Country } from '@/features/locations/types'
+import type { Vendor } from '@/features/vendors/types'
 
 // Service filtering uses a loose substring match because the URL value may come
 // from human-readable labels rather than exact stored service names.
