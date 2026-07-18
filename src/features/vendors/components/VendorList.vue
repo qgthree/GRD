@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { ref, computed, watch } from 'vue';
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
 import AppLink from '@/components/AppLink.vue'
@@ -41,17 +40,14 @@ let searchFilteredVendors = computed(() => {
 
 // Reset the scroll position when the visible list changes so search results
 // start at the top of the panel.
-const listKey = ref(0);
-const rerenderList = () => {
-  const vendorScroll = document.getElementById("vendorScroll");
-  if (vendorScroll) {
-    vendorScroll.scrollTop = 0;
-  }
+const vendorScroll = ref<HTMLElement | null>(null);
+const scrollVendorListToTop = () => {
+  vendorScroll.value?.scrollTo({ top: 0 });
 };
 
 watch(searchFilteredVendors, () => {
-  rerenderList();
-});
+  scrollVendorListToTop();
+}, { flush: 'post' });
 
 // Text selection inside a card should not also toggle the card open/closed.
 const toggleVisibility = (key: number, e: MouseEvent) => {
@@ -78,8 +74,8 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
     <div class="component_body">
       <input v-model="vendorSearch" type="text" placeholder="search for a vendor" />
     </div>
-    <div class="component_body" :key="listKey">
-      <PerfectScrollbar id="vendorScroll">
+    <div class="component_body vendor-list-body">
+      <div ref="vendorScroll" class="vendor-scroll">
         <div class="searchResultsDetails" v-if="vendorSearch"><strong>{{ searchFilteredVendors.length }}</strong> <span v-if="searchFilteredVendors.length === 1"><strong>vendor</strong> contains</span><span v-else><strong>vendors</strong> contain</span> details that include your search.</div>
         <transition-group name="list-card" tag="div">
           <div class="list-card" v-for="vendor in searchFilteredVendors" :key="vendor.id" @click="toggleVisibility(vendor.id, $event)">
@@ -126,7 +122,7 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
             </div>
           </div>
         </transition-group>
-      </PerfectScrollbar>
+      </div>
     </div>
   </div>
 </template>
@@ -154,6 +150,9 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
     width: 100%;
     background-color: #f2f2f2;
   }
+  .vendor-list-body {
+    overflow: hidden;
+  }
 
   #vlist input {
     width: calc(100% - 40px);
@@ -171,8 +170,9 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
     color: #651D32;
   }
 
-  .ps {
-    max-height: 100%;
+  .vendor-scroll {
+    max-height: inherit;
+    overflow-y: auto;
     background-color: #fff;
   }
 

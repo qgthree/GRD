@@ -100,7 +100,7 @@ const createChildBoundaries = (features: CountryFeature[]) => {
   })
 }
 
-const renderMapSelection = (query: LocationQuery) => {
+const renderMapSelection = (query: LocationQuery, moveViewport = true) => {
   // Route watchers can run before async map data has loaded.
   if (!mapData.value) return;
 
@@ -111,7 +111,9 @@ const renderMapSelection = (query: LocationQuery) => {
   if (selection.type === 'none') {
     // No URL selection means the user sees all parent boundaries.
     setActiveLayer(createParentBoundaries(mapData.value.parentBoundaries.features));
-    setDefaultViewport(map, leafSettings);
+    if (moveViewport) {
+      setDefaultViewport(map, leafSettings);
+    }
     return;
   }
 
@@ -122,7 +124,9 @@ const renderMapSelection = (query: LocationQuery) => {
     })
 
     setActiveLayer(createParentBoundaries(selectedParentBoundaries));
-    setDefaultViewport(map, leafSettings);
+    if (moveViewport) {
+      setDefaultViewport(map, leafSettings);
+    }
     return;
   }
 
@@ -133,7 +137,9 @@ const renderMapSelection = (query: LocationQuery) => {
     })
 
     setActiveLayer(createChildBoundaries(selectedChildBoundaries));
-    setBoundaryViewport(map, getBoundaryStyle(selection.id), leafSettings);
+    if (moveViewport) {
+      setBoundaryViewport(map, getBoundaryStyle(selection.id), leafSettings);
+    }
     return;
   }
 
@@ -152,11 +158,15 @@ const renderMapSelection = (query: LocationQuery) => {
     })
 
     if (firstChildBoundary && allChildBoundariesShareParent) {
-      setBoundaryViewport(map, getBoundaryStyle(firstChildBoundary.properties.BHA_Reg), leafSettings);
+      if (moveViewport) {
+        setBoundaryViewport(map, getBoundaryStyle(firstChildBoundary.properties.BHA_Reg), leafSettings);
+      }
       return;
     }
 
-    setDefaultViewport(map, leafSettings);
+    if (moveViewport) {
+      setDefaultViewport(map, leafSettings);
+    }
     return;
   }
 
@@ -169,7 +179,9 @@ const renderMapSelection = (query: LocationQuery) => {
   const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries);
 
   setActiveLayer(childBoundaryLayer);
-  setFeatureViewport(map, selectedChildBoundary, childBoundaryLayer);
+  if (moveViewport) {
+    setFeatureViewport(map, selectedChildBoundary, childBoundaryLayer);
+  }
 }
 
 onMounted(async () => {
@@ -187,7 +199,7 @@ watch(() => route.query, (newQuery) => {
 
 watch(() => vendorStore.filteredVendors, () => {
   // Service filters can change counts without changing the selected geography.
-  renderMapSelection(route.query);
+  renderMapSelection(route.query, false);
 });
 
 onUnmounted(() => {
