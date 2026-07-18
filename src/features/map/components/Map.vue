@@ -185,6 +185,11 @@ watch(() => route.query, (newQuery) => {
   renderMapSelection(newQuery);
 });
 
+watch(() => vendorStore.filteredVendors, () => {
+  // Service filters can change counts without changing the selected geography.
+  renderMapSelection(route.query);
+});
+
 onUnmounted(() => {
   // Leaflet attaches DOM/event handlers outside Vue, so remove them explicitly.
   removeActiveLayer();

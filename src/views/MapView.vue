@@ -24,11 +24,9 @@ onMounted(async () => {
   await updateRouteData(route.query);
 });
 
-// The URL drives both the vendor list and the map. Closing filters on route
-// change keeps the map visible after a user chooses a filter.
+// The URL drives both the vendor list and the map.
 watch(() => route.query, (newQuery) => {
   void updateRouteData(newQuery);
-  filtersStore.toggleFiltersView('hidden');
 });
 </script>
 
