@@ -1,22 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
-import Applink from '@/components/Applink.vue'
+import AppLink from '@/components/AppLink.vue'
+import { formatServiceName } from '@/features/vendors/utils/vendorFormatters'
 import print from "@/assets/images/print.svg";
 import close from "@/assets/images/close.svg";
 
-// list of vendors, already filtered per url params
+// The store owns URL-level filtering; this component adds only local text search
+// and expanded/collapsed display state.
 const vendorStore = useVendorStore();
 const { filteredVendors } = storeToRefs(vendorStore);
 const countries = useLocationStore().countries;
 
-const getCountryName = (ISO3) => countries.find((country) => country.ISO3 == ISO3).name;
+// Vendor records store country ids. The list displays country names when the
+// local country metadata has a match.
+const getCountryName = (ISO3: string) => countries.find((country) => country.ISO3 == ISO3)?.name ?? ISO3;
 
-// update vendors to display search results
-let vendorSearch = defineModel();
+// This model is local to the input below and narrows the already route-filtered
+// vendor results.
+let vendorSearch = defineModel<string>({ default: '' });
 let searchFilteredVendors = computed(() => {
   if (!vendorSearch.value) {
     return filteredVendors.value;
@@ -34,35 +39,31 @@ let searchFilteredVendors = computed(() => {
   });
 });
 
-// rerender the list component when searching so that scrollbar stays consistent
+// Reset the scroll position when the visible list changes so search results
+// start at the top of the panel.
 const listKey = ref(0);
 const rerenderList = () => {
   const vendorScroll = document.getElementById("vendorScroll");
-  return vendorScroll.scrollTop = 0;
+  if (vendorScroll) {
+    vendorScroll.scrollTop = 0;
+  }
 };
 
-// Perform when vendor data updates
-watch(searchFilteredVendors, (newValue, oldValue) => {
+watch(searchFilteredVendors, () => {
   rerenderList();
 });
 
-// expand and collapse vendor details
-const toggleVisibility = (key, e) => {
+// Text selection inside a card should not also toggle the card open/closed.
+const toggleVisibility = (key: number, e: MouseEvent) => {
   const vendor = filteredVendors.value.find((item) => item.id === key);
-  if (document.getSelection().type === 'Range') {
+  if (document.getSelection()?.type === 'Range') {
     e.stopPropagation();
   }
-  else {
+  else if (vendor) {
     vendor.isVisible = !vendor.isVisible;
   }
 }
 
-// Format the service names
-const formatServiceName = (service) => {
-  return service
-    .replace(/_\(y\/n\)/gi, '')    // Remove (y/n)
-    .replace(/_/g, ' ')            // Replace underscores with spaces
-};
 </script>
 
 <template>
@@ -120,7 +121,7 @@ const formatServiceName = (service) => {
                 <span class="list-data_label">
                   URL:
                 </span>
-                <Applink :to="vendor.url">{{ vendor.url }}</Applink>
+                <AppLink :to="vendor.url">{{ vendor.url }}</AppLink>
               </div>
             </div>
           </div>

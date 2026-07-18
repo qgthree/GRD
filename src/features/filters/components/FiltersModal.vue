@@ -1,11 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { useFiltersStore } from '@/stores/filtersStore';
 import close from "@/assets/images/close.svg";
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
-import FilterTypeSelector from '@/components/FilterTypeSelector.vue'
+import FilterTypeSelector from '@/features/filters/components/FilterTypeSelector.vue'
 </script>
 
 <template>
+  <!-- Overlay wrapper keeps the filter panel visually separate from the map. -->
   <div class="modal-mask">
     <div id="filters">
       <div class="component_header">
@@ -16,6 +17,7 @@ import FilterTypeSelector from '@/components/FilterTypeSelector.vue'
       </div>
       <div class="component_body">
         <FilterTypeSelector />
+        <!-- Placeholder area for the deeper location/sector filter controls. -->
         <PerfectScrollbar>
           <div id="locationTypeSelector">
             <div class="selectorLeft">Filter By Region</div>

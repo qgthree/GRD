@@ -1,8 +1,37 @@
 import { defineStore } from 'pinia';
 import { useLocationStore } from '@/stores/locationStore';
+import {
+  vendorProvidesService,
+  vendorServesCountry,
+  vendorServesRegion
+} from '@/features/vendors/utils/vendorCoverage';
+
+export interface Vendor {
+  id: number;
+  company_name: string;
+  region: string[];
+  subsectors: string[];
+  country_location: string[];
+  'city_/_subsidiary_location': string;
+  'primary_contact(s)'?: string;
+  phone?: string;
+  url?: string;
+  email?: string;
+  previously_used: boolean;
+  isVisible: boolean;
+}
+
+// These fields mirror the current URL query filters.
+interface VendorQuery {
+  services?: string;
+  region?: string;
+  country?: string;
+}
 
 export const useVendorStore = defineStore('vendorStore', {
   state: () => ({
+    // Local seed data for now; this is the obvious future replacement point for
+    // API/database-backed vendor data.
     vendors: [
       {
         "id": 1,
@@ -109,62 +138,52 @@ export const useVendorStore = defineStore('vendorStore', {
         "isVisible": false
       }
     ],
-    filteredVendors: [],
+    filteredVendors: [] as Vendor[],
     loading: false,
-    error: null,
+    error: null as string | null,
     show: true
   }),
   actions: {
 
     // removed vendor fetch
 
-    async updateVendors(query) {
+    async updateVendors(query: VendorQuery[]) {
+      // Route watchers pass query objects in an array today. The first item is
+      // the active query state used to filter the local vendor list.
       const services = !query[0].services ? false : query[0].services.split(",");
       const regions = !query[0].region ? false : query[0].region.split(",");
       const countries = !query[0].country ? false : query[0].country.split(",");
-      let urlFilteredVendors = [];
+      let urlFilteredVendors: Vendor[] = [];
 
-      // filter for services provided in url
+      // Start with all vendors unless the URL asks for specific services.
       if (!services) {
         urlFilteredVendors = this.vendors;
       }
       else {
-        const checker = (vendor) => {
+        const checker = (vendor: Vendor) => {
           return services.some(service =>
-            vendor.subsectors.join(',').toLowerCase().includes(service.toLowerCase())
+            vendorProvidesService(vendor, service)
           );
         }
         urlFilteredVendors = this.vendors.filter(checker);
       }
 
-      // filter for regions provided in url
+      // Region filters include vendors that serve any country in the selected
+      // regions, vendors that name the region, and global vendors.
       if (regions) {
         const countryList = useLocationStore().countries.filter(country => regions.includes(country.region));
-        const checker = (vendor) => {
-          return countryList.some(country =>
-            // vendors that claim to operate in at least one country that falls within the region
-            vendor.country_location.includes(country.ISO3) ||
-            // vendors that claim to operate globally
-            vendor.region && vendor.region.includes('Global') ||
-            // vendors that claim to operate in the region
-            vendor.region && vendor.region.includes(country.region)
-          );
+        const checker = (vendor: Vendor) => {
+          return regions.some(region => vendorServesRegion(vendor, region, countryList));
         }
         urlFilteredVendors = urlFilteredVendors.filter(checker);
       }
 
-      // filter for countries provided in url
+      // Country filters are narrower, but still include global vendors and
+      // region-wide vendors when they do not list countries individually.
       if (countries) {
         const countryList = useLocationStore().countries.filter(country => countries.includes(country.ISO3));
-        const checker = (vendor) => {
-          return countryList.some(country =>
-            // vendors that claim to operate in the countries provided in url filtering
-            vendor.country_location.includes(country.ISO3) ||
-            // vendors that claim to operate globally
-            vendor.region && vendor.region.includes('Global') ||
-            // if there are no countries listed, it means the vendor claims to serve all of a region, including this country
-            vendor.region && !vendor.country_location && vendor.region.includes(country.region)
-          );
+        const checker = (vendor: Vendor) => {
+          return countryList.some(country => vendorServesCountry(vendor, country));
         }
         urlFilteredVendors = urlFilteredVendors.filter(checker);
       }
@@ -174,17 +193,12 @@ export const useVendorStore = defineStore('vendorStore', {
     toggleVendors() {
       this.show = !this.show;
     },
-    regionVendorCount(region) {
+    regionVendorCount(region: string) {
+      // Tooltip counts should reflect the already-filtered vendor list so map
+      // counts stay aligned with the visible vendor panel.
       const countryList = useLocationStore().countries.filter(country => region === country.region);
-      const checker = (vendor) => {
-        return countryList.some(country =>
-          // vendors that claim to operate in at least one country that falls within the region
-          vendor.country_location.includes(country.ISO3) ||
-          // vendors that claim to operate globally
-          vendor.region && vendor.region.includes('Global') ||
-          // vendors that claim to operate in a specific region
-          vendor.region && vendor.region.includes(region)
-        );
+      const checker = (vendor: Vendor) => {
+        return vendorServesRegion(vendor, region, countryList);
       }
       if (!region.includes('Global')) {
         return this.filteredVendors.filter(checker).length;
@@ -193,19 +207,11 @@ export const useVendorStore = defineStore('vendorStore', {
         return this.filteredVendors.filter(vendor => vendor.region.includes('Global')).length;
       }
     },
-    countryVendorCount(ISO3) {
-      let country = useLocationStore().countries.find(ctr => ctr.ISO3 === ISO3);
+    countryVendorCount(ISO3: string) {
+      // Country counts are computed without mutating the country store.
+      const country = useLocationStore().countries.find(ctr => ctr.ISO3 === ISO3);
       if (country) {
-        let count = this.filteredVendors.filter(vendor =>
-          // vendors that claim to operate in a specific country
-          vendor.country_location && vendor.country_location.includes(country.ISO3) ||
-          // vendors that claim to operate globally
-          vendor.region && vendor.region.includes('Global') ||
-          // vendors that claim to operate in a specific region (must not also name countries)
-          vendor.region && !vendor.country_location && vendor.region.includes(country.region)
-        ).length;
-        country.vendorCount = count;
-        return count;
+        return this.filteredVendors.filter(vendor => vendorServesCountry(vendor, country)).length;
       }
     }
     /*

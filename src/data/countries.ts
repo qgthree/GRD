@@ -1,9 +1,14 @@
-import { defineStore } from 'pinia';
+export interface Country {
+  name: string;
+  ISO3: string;
+  region: string;
+  type: string;
+  vendorCount?: number;
+}
 
-export const useLocationStore = defineStore('locationStore', {
-  state: () => ({
-    updated: false,
-    countries: [
+// Static country metadata used for display names and region membership. The map
+// geometry itself lives in the GeoJSON files under src/features/map/data.
+export const countries: Country[] = [
         {
             "name": "Antarctica",
             "ISO3": "ATA",
@@ -1661,5 +1666,3 @@ export const useLocationStore = defineStore('locationStore', {
             "type": "Dependency"
         }
     ]
-  })
-});

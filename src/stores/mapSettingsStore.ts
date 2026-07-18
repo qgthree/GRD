@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-// Storing configurations for the map
+// Central place for Leaflet styling, viewport, and interaction settings.
 export const useMapSettingsStore = defineStore('mapSettingsStore', {
     state: () => ({
         namespaced: true,
@@ -21,6 +21,8 @@ export const useMapSettingsStore = defineStore('mapSettingsStore', {
                 mediumOpacity: 0.5,
                 lightOpacity: 0.3
             },
+            // Region settings connect the GeoJSON region names to visual colors
+            // and default zoom positions.
             region: [
                 {
                     name: "Africa",

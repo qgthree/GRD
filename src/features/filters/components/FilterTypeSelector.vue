@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { useFiltersStore } from '@/stores/filtersStore';
-import { storeToRefs } from 'pinia';
 </script>
 
 <template>
+  <!-- Switches between the two filter modes stored in the filters store. -->
   <div id="filterSelector">
     <div
       class="filterType"

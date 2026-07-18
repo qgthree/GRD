@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useMapSettingsStore } from "@/stores/mapSettingsStore";
 import { useVendorStore } from '@/stores/vendorStore';
 import { useRoute } from "vue-router";
@@ -8,6 +8,7 @@ const vendorStore = useVendorStore();
 </script>
 
 <template>
+  <!-- Legend colors come from the same map settings used by the Leaflet layers. -->
   <div class="legend">
     <div class="component_header">
       <div>Regions<span v-if="useRoute().query.services" style="font-style: italic;"> (filtered)</span></div>
@@ -20,6 +21,7 @@ const vendorStore = useVendorStore();
         <div class="legend-region_name">{{ region.name }}</div>
         <div class="vendorCount">{{ vendorStore.regionVendorCount(region.name) }} vendors</div>
       </div>
+      <!-- Global vendors are counted separately because they appear in every region total. -->
       <div class="note">Totals include {{ vendorStore.regionVendorCount("Global") }} vendors listed as "Global"</div>
     </div>
   </div>

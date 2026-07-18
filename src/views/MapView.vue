@@ -1,9 +1,9 @@
-<script setup>
-import Map from '../components/Map.vue'
-import Nav from '../components/Nav.vue'
-import Filters from '../components/FiltersModal.vue'
-import WorldLegend from "@/components/WorldLegend.vue";
-import VendorList from '../components/VendorList.vue';
+<script setup lang="ts">
+import Map from '@/features/map/components/Map.vue'
+import Nav from '@/components/Nav.vue'
+import Filters from '@/features/filters/components/FiltersModal.vue'
+import WorldLegend from "@/features/map/components/WorldLegend.vue";
+import VendorList from '@/features/vendors/components/VendorList.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
 import { onMounted, watch } from "vue";
@@ -12,12 +12,13 @@ import spinner from "@/assets/images/infinite-spinner.svg";
 
 const route = useRoute();
 
-// Perform when component is first mounted
+// Initial vendor filtering must happen before the map/list rely on filtered data.
 onMounted(() => {
   useVendorStore().updateVendors([route.query]);
 });
 
-// Perform when route changes
+// The URL drives both the vendor list and the map. Closing filters on route
+// change keeps the map visible after a user chooses a filter.
 watch(() => route.query, (newQuery) => {
   useVendorStore().updateVendors([newQuery]);
   useFiltersStore().toggleFiltersView('hidden');
