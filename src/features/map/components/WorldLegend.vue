@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useMapSettingsStore } from "@/stores/mapSettingsStore";
 import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { getBoundarySelection, mapBoundaryQueryKeys } from '@/features/map/utils/mapQuery';
 import { createVendorDensityBuckets } from '@/features/map/utils/vendorDensity';
 
@@ -11,6 +11,7 @@ const { leafSettings } = useMapSettingsStore();
 const vendorStore = useVendorStore();
 const locationStore = useLocationStore();
 const route = useRoute();
+const router = useRouter();
 
 const activeSelection = computed(() => getBoundarySelection(route.query, mapBoundaryQueryKeys));
 const visibleRegions = computed(() => {
@@ -49,6 +50,17 @@ const densityBuckets = computed(() => {
 // The map helper builds buckets light-to-dark; the legend reads better with the
 // highest vendor presence first.
 const densityLegendBuckets = computed(() => [...densityBuckets.value].reverse());
+
+// Legend region clicks use the same URL state as map clicks and filters.
+const selectRegion = (regionName: string) => {
+  void router.push({
+    query: {
+      ...route.query,
+      region: regionName,
+      country: undefined,
+    },
+  });
+};
 </script>
 
 <template>
@@ -77,13 +89,19 @@ const densityLegendBuckets = computed(() => [...densityBuckets.value].reverse())
       </div>
 
       <template v-else>
-        <div class="legend-region" v-for="region in visibleRegions" :key="region.name">
+        <button
+          class="legend-region"
+          v-for="region in visibleRegions"
+          :key="region.name"
+          type="button"
+          @click="selectRegion(region.name)"
+        >
           <div class="color_container">
             <div class="legend-region_color" :style="{ 'background-color': region.color }"></div>
           </div>
           <div class="legend-region_name">{{ region.name }}</div>
           <div class="vendorCount">{{ vendorStore.regionVendorCount(region.name) }} vendors</div>
-        </div>
+        </button>
         <!-- Global vendors are counted separately because they appear in every region total. -->
         <div class="note">Totals include {{ vendorStore.regionVendorCount("Global") }} vendors listed as "Global"</div>
       </template>
@@ -113,10 +131,21 @@ const densityLegendBuckets = computed(() => [...densityBuckets.value].reverse())
   grid-template-columns: 1fr;
 }
 .legend-region {
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 6px;
   display: grid;
   grid-template-columns: 20% 30% 1fr;
   align-items: center;
-  margin: 6px 0px;
+  width: 100%;
+  margin: 2px 0px;
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.legend-region:hover {
+  background-color: #eeeeee;
 }
 .legend-density {
   display: grid;

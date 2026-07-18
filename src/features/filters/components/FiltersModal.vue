@@ -1,11 +1,41 @@
 <script setup lang="ts">
 import { useFiltersStore } from '@/stores/filtersStore'
+import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 import close from '@/assets/images/close.svg'
 import FilterTypeSelector from '@/features/filters/components/FilterTypeSelector.vue'
 import LocationFilterPanel from '@/features/filters/components/LocationFilterPanel.vue'
 import ServiceFilterPanel from '@/features/filters/components/ServiceFilterPanel.vue'
 
 const filtersStore = useFiltersStore()
+const route = useRoute()
+const router = useRouter()
+
+// Filter controls replace the current URL while the modal is open. Keeping the
+// opening query lets close create one useful browser-history entry afterward.
+const openingQuery = { ...route.query }
+
+const querySignature = (query: LocationQuery) => JSON.stringify(
+  Object.keys(query)
+    .sort()
+    .map((key) => {
+      const value = query[key]
+
+      return [key, Array.isArray(value) ? [...value].sort() : value]
+    }),
+)
+
+const closeFilters = async () => {
+  const closingQuery = { ...route.query }
+
+  filtersStore.toggleFiltersView('hidden')
+
+  if (querySignature(openingQuery) === querySignature(closingQuery)) return
+
+  // Rebuild history as: previous URL -> final filter URL. This avoids adding a
+  // history entry for every checkbox click while still preserving the result.
+  await router.replace({ query: openingQuery })
+  await router.push({ query: closingQuery })
+}
 </script>
 
 <template>
@@ -15,7 +45,7 @@ const filtersStore = useFiltersStore()
       <div class="component_header">
         <div class="header-left">Filters</div>
         <div class="header-right">
-          <img :src="close" @click="filtersStore.toggleFiltersView('hidden')" />
+          <img :src="close" @click="closeFilters" />
         </div>
       </div>
       <div class="component_body">
