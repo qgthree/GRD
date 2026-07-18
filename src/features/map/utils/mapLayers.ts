@@ -7,6 +7,7 @@ interface BoundaryLayerOptions<TFeature extends MapFeature<any>> {
   getStyleKey: (feature: TFeature) => string
   getLabel: (feature: TFeature) => string
   getDetail?: (feature: TFeature) => string
+  getFillOpacity?: (feature: TFeature) => number
   getHoverGroupKey?: (feature: TFeature) => string
   getBoundaryStyle: (name: string) => BoundaryStyleSetting | undefined
   map?: L.Map
@@ -41,14 +42,14 @@ const tooltipText = <TFeature extends MapFeature<any>>(
 const setGroupOpacity = <TFeature extends MapFeature<any>>(
   map: L.Map,
   groupKey: string,
-  fillOpacity: number,
+  getFillOpacity: (feature: TFeature) => number,
   getHoverGroupKey: (feature: TFeature) => string
 ) => {
   map.eachLayer((layer) => {
     const feature = featureLayer<TFeature>(layer).feature
 
     if (feature && getHoverGroupKey(feature) === groupKey) {
-      ;(layer as L.Path).setStyle({ fillOpacity })
+      ;(layer as L.Path).setStyle({ fillOpacity: getFillOpacity(feature) })
     }
   })
 }
@@ -57,17 +58,23 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
   options: BoundaryLayerOptions<TFeature>
 ) => {
   const isInteractive = options.interactive ?? true
+  // A caller can provide per-feature opacity for special modes like density
+  // maps; otherwise every feature uses the standard resting opacity.
+  const getRestingFillOpacity = (feature: TFeature) => {
+    return options.getFillOpacity?.(feature) ?? options.settings.features.lightOpacity
+  }
 
   return L.geoJSON(options.features, {
     style: (feature) => {
-      const boundaryStyle = options.getBoundaryStyle(options.getStyleKey(feature as TFeature)) ?? fallbackBoundaryStyle
+      const typedFeature = feature as TFeature
+      const boundaryStyle = options.getBoundaryStyle(options.getStyleKey(typedFeature)) ?? fallbackBoundaryStyle
 
       return {
         color: boundaryStyle.color,
         weight: options.settings.features.weight,
         opacity: options.settings.features.mediumOpacity,
         fillColor: boundaryStyle.color,
-        fillOpacity: options.settings.features.lightOpacity
+        fillOpacity: getRestingFillOpacity(typedFeature)
       }
     },
     onEachFeature: (feature, layer) => {
@@ -79,11 +86,15 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
       if (!isInteractive) return
 
       layer.on('mouseover', () => {
+        // Density maps already use fill opacity to communicate data. Do not
+        // overwrite that encoding just to show hover state.
+        if (options.getFillOpacity) return
+
         if (hoverGroupKey && options.map) {
           setGroupOpacity<TFeature>(
             options.map,
             hoverGroupKey,
-            options.settings.features.mediumOpacity,
+            () => options.settings.features.mediumOpacity,
             options.getHoverGroupKey
           )
           return
@@ -97,13 +108,13 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
           setGroupOpacity<TFeature>(
             options.map,
             hoverGroupKey,
-            options.settings.features.lightOpacity,
+            getRestingFillOpacity,
             options.getHoverGroupKey
           )
           return
         }
 
-        ;(layer as L.Path).setStyle({ fillOpacity: options.settings.features.lightOpacity })
+        ;(layer as L.Path).setStyle({ fillOpacity: getRestingFillOpacity(typedFeature) })
       })
 
       layer.on('click', () => {
@@ -111,12 +122,12 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
           setGroupOpacity<TFeature>(
             options.map,
             hoverGroupKey,
-            options.settings.features.lightOpacity,
+            getRestingFillOpacity,
             options.getHoverGroupKey
           )
         }
         else {
-          ;(layer as L.Path).setStyle({ fillOpacity: options.settings.features.lightOpacity })
+          ;(layer as L.Path).setStyle({ fillOpacity: getRestingFillOpacity(typedFeature) })
         }
 
         options.onFeatureClick?.(typedFeature)

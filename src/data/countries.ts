@@ -1,7 +1,7 @@
 import type { Country } from '@/features/locations/types'
 
 // Static country metadata used for display names and region membership. The map
-// geometry itself lives in the GeoJSON files under src/features/map/data.
+// geometry itself is served from public/map-data so it stays out of the bundle.
 export const countries: Country[] = [
         {
             "name": "Antarctica",

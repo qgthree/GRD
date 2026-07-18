@@ -13,28 +13,34 @@ import type {
 } from "@/features/map/types";
 import { useMapData } from "@/features/map/composables/useMapData";
 import { createBoundaryLayer } from "@/features/map/utils/mapLayers";
-import { getBoundarySelection } from "@/features/map/utils/mapQuery";
+import { getBoundarySelection, mapBoundaryQueryKeys } from "@/features/map/utils/mapQuery";
 import {
   findBoundaryStyle,
   setBoundaryViewport,
   setFeatureViewport,
   setDefaultViewport
 } from "@/features/map/utils/mapViewport";
+import {
+  createVendorDensityBuckets,
+  findVendorDensityBucket,
+  type VendorDensityBucket
+} from "@/features/map/utils/vendorDensity";
 
 const router = useRouter();
 const route = useRoute();
 const vendorStore = useVendorStore();
 const { leafSettings } = useMapSettingsStore() as { leafSettings: LeafSettings };
-const { data: mapData, loadMapData } = useMapData();
-const boundaryQueryKeys = {
-  parentKey: 'region',
-  childKey: 'country'
-};
+const {
+  parentBoundaries,
+  loadParentBoundaries,
+  loadChildBoundariesForRegions,
+  loadChildBoundariesForCountries
+} = useMapData();
 
 // Leaflet owns these objects outside Vue reactivity. Keeping them as plain
 // variables avoids unnecessary proxying and makes cleanup direct.
 let map: L.Map;
-let activeLayer: L.GeoJSON | null = null;
+let boundaryLayerGroup: L.LayerGroup;
 
 const initializeMap = () => {
   map = L.map("map", leafSettings.mapOptions);
@@ -45,23 +51,44 @@ const initializeMap = () => {
     minZoom: leafSettings.minZoom,
     maxZoom: leafSettings.maxZoom
   }).addTo(map);
+
+  // All route-selected GeoJSON layers live in this group. Clearing the group is
+  // more reliable than tracking individual layers during async route changes.
+  boundaryLayerGroup = L.layerGroup().addTo(map);
 };
 
-const removeActiveLayer = () => {
-  if (!activeLayer) return;
-
-  // Remove the previous GeoJSON overlay before drawing the next selection.
-  map.removeLayer(activeLayer);
-  activeLayer = null;
+const clearBoundaryLayers = () => {
+  boundaryLayerGroup.clearLayers();
 }
 
-const setActiveLayer = (layer: L.GeoJSON) => {
-  // Track one active overlay so route changes can replace it cleanly.
-  activeLayer = layer;
-  activeLayer.addTo(map);
+const setBoundaryLayer = (layer: L.GeoJSON) => {
+  clearBoundaryLayers();
+  boundaryLayerGroup.addLayer(layer);
 }
 
 const getBoundaryStyle = (boundaryName: string) => findBoundaryStyle(leafSettings.region, boundaryName);
+
+// Some disputed GeoJSON claim areas have blank ISO codes. Excluding them keeps
+// those shapes from becoming invalid routes like ?country=+.
+const hasCountryCode = (feature: CountryFeature) => {
+  return Boolean(feature.properties.ISO3.trim());
+}
+
+const selectionKey = (selection: ReturnType<typeof getBoundarySelection>) => {
+  if (selection.type === 'parent' || selection.type === 'child') {
+    return `${selection.type}:${selection.id}`
+  }
+
+  if (selection.type === 'parent-list' || selection.type === 'child-list') {
+    return `${selection.type}:${selection.ids.join(',')}`
+  }
+
+  return selection.type
+}
+
+const isCurrentSelection = (expectedSelectionKey: string) => {
+  return selectionKey(getBoundarySelection(route.query, mapBoundaryQueryKeys)) === expectedSelectionKey
+}
 
 const createParentBoundaries = (features: RegionFeature[]) => {
   // Parent boundary layers render the broadest selectable geography. This
@@ -77,40 +104,59 @@ const createParentBoundaries = (features: RegionFeature[]) => {
     getHoverGroupKey: (feature) => feature.properties.BHA_REGION,
     onFeatureClick: (feature) => router.push({
       path: '/map',
-      query: { region: feature.properties.BHA_REGION }
+      query: {
+        ...route.query,
+        region: feature.properties.BHA_REGION,
+        country: undefined
+      }
     })
   })
 }
 
-const createChildBoundaries = (features: CountryFeature[]) => {
+const createChildBoundaries = (features: CountryFeature[], densityBuckets?: VendorDensityBucket[]) => {
+  const childBoundaries = features.filter(hasCountryCode)
+
   // Child boundary layers receive app behavior through callbacks for the same
   // reason: the utility should not import router or stores directly.
   return createBoundaryLayer({
-    features,
+    features: childBoundaries,
     settings: leafSettings,
     getBoundaryStyle,
-    interactive: features.length > 1,
+    interactive: childBoundaries.length > 1,
     getStyleKey: (feature) => feature.properties.BHA_Reg,
     getLabel: (feature) => feature.properties.USG_Name,
     getDetail: (feature) => `${vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0} vendors`,
+    // Single-region views pass density buckets so country fills become a
+    // simple vendor-presence heatmap. Other country views use the base fill.
+    getFillOpacity: densityBuckets
+      ? (feature) => {
+        const vendorCount = vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0
+        return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
+      }
+      : undefined,
     onFeatureClick: (feature) => router.push({
       path: '/map',
-      query: { country: feature.properties.ISO3 }
+      query: {
+        ...route.query,
+        region: undefined,
+        country: feature.properties.ISO3
+      }
     })
   })
 }
 
-const renderMapSelection = (query: LocationQuery, moveViewport = true) => {
+const renderMapSelection = async (query: LocationQuery, moveViewport = true) => {
   // Route watchers can run before async map data has loaded.
-  if (!mapData.value) return;
+  if (!parentBoundaries.value) return;
 
-  const selection = getBoundarySelection(query, boundaryQueryKeys);
+  const selection = getBoundarySelection(query, mapBoundaryQueryKeys);
+  const currentSelectionKey = selectionKey(selection);
 
-  removeActiveLayer();
-
+  // Synchronous region views can replace the layer immediately. Country views
+  // load geometry first, then verify the route before replacing anything.
   if (selection.type === 'none') {
     // No URL selection means the user sees all parent boundaries.
-    setActiveLayer(createParentBoundaries(mapData.value.parentBoundaries.features));
+    setBoundaryLayer(createParentBoundaries(parentBoundaries.value.features));
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
     }
@@ -119,11 +165,11 @@ const renderMapSelection = (query: LocationQuery, moveViewport = true) => {
 
   if (selection.type === 'parent-list') {
     // Multiple selected parent boundaries still use the broad map view.
-    const selectedParentBoundaries = mapData.value.parentBoundaries.features.filter((feature) => {
+    const selectedParentBoundaries = parentBoundaries.value.features.filter((feature) => {
       return selection.ids.includes(feature.properties.BHA_REGION);
     })
 
-    setActiveLayer(createParentBoundaries(selectedParentBoundaries));
+    setBoundaryLayer(createParentBoundaries(selectedParentBoundaries));
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
     }
@@ -132,11 +178,19 @@ const renderMapSelection = (query: LocationQuery, moveViewport = true) => {
 
   if (selection.type === 'parent') {
     // One selected parent boundary drills into its child boundaries.
-    const selectedChildBoundaries = mapData.value.childBoundaries.features.filter((feature) => {
-      return feature.properties.BHA_Reg === selection.id;
-    })
+    const childBoundaries = await loadChildBoundariesForRegions([selection.id])
+    // Lazy child-boundary requests can finish after the user has already
+    // navigated back out. In that case, keep the newer route's layer intact.
+    if (!isCurrentSelection(currentSelectionKey)) return
 
-    setActiveLayer(createChildBoundaries(selectedChildBoundaries));
+    const selectedChildBoundaries = childBoundaries.features.filter(hasCountryCode)
+    // Build density from the currently filtered vendor counts so service
+    // filters are reflected in both the country fills and the legend.
+    const densityBuckets = createVendorDensityBuckets(selectedChildBoundaries.map((feature) => {
+      return vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0
+    }))
+
+    setBoundaryLayer(createChildBoundaries(selectedChildBoundaries, densityBuckets));
     if (moveViewport) {
       setBoundaryViewport(map, getBoundaryStyle(selection.id), leafSettings);
     }
@@ -146,11 +200,12 @@ const renderMapSelection = (query: LocationQuery, moveViewport = true) => {
   if (selection.type === 'child-list') {
     // Multiple selected child boundaries show child shapes. If they are all in
     // one parent boundary, zoom to that parent; otherwise use the broad view.
-    const selectedChildBoundaries = mapData.value.childBoundaries.features.filter((feature) => {
-      return selection.ids.includes(feature.properties.ISO3);
-    })
+    const childBoundaries = await loadChildBoundariesForCountries(selection.ids)
+    if (!isCurrentSelection(currentSelectionKey)) return
 
-    setActiveLayer(createChildBoundaries(selectedChildBoundaries));
+    const selectedChildBoundaries = childBoundaries.features
+
+    setBoundaryLayer(createChildBoundaries(selectedChildBoundaries));
 
     const firstChildBoundary = selectedChildBoundaries[0];
     const allChildBoundariesShareParent = selectedChildBoundaries.every((feature) => {
@@ -172,13 +227,14 @@ const renderMapSelection = (query: LocationQuery, moveViewport = true) => {
 
   // One selected child boundary becomes a one-item array for layer creation,
   // then uses its bounds/centroid for the viewport.
-  const selectedChildBoundary = mapData.value.childBoundaries.features.find((feature) => {
-    return feature.properties.ISO3 === selection.id;
-  })
+  const childBoundaries = await loadChildBoundariesForCountries([selection.id])
+  if (!isCurrentSelection(currentSelectionKey)) return
+
+  const selectedChildBoundary = childBoundaries.features[0]
   const selectedChildBoundaries = selectedChildBoundary ? [selectedChildBoundary] : [];
   const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries);
 
-  setActiveLayer(childBoundaryLayer);
+  setBoundaryLayer(childBoundaryLayer);
   if (moveViewport) {
     setFeatureViewport(map, selectedChildBoundary, childBoundaryLayer);
   }
@@ -188,23 +244,23 @@ onMounted(async () => {
   initializeMap();
   // Load after Leaflet initializes so the first render can immediately add the
   // correct route-selected overlay.
-  await loadMapData();
+  await loadParentBoundaries();
   renderMapSelection(route.query);
 });
 
 watch(() => route.query, (newQuery) => {
   // The URL is the source of truth for which geography is visible.
-  renderMapSelection(newQuery);
+  void renderMapSelection(newQuery);
 });
 
 watch(() => vendorStore.filteredVendors, () => {
   // Service filters can change counts without changing the selected geography.
-  renderMapSelection(route.query, false);
+  void renderMapSelection(route.query, false);
 });
 
 onUnmounted(() => {
   // Leaflet attaches DOM/event handlers outside Vue, so remove them explicitly.
-  removeActiveLayer();
+  clearBoundaryLayers();
   map.remove();
 });
 </script>

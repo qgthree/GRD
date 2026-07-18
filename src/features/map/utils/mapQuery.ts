@@ -6,6 +6,11 @@ interface BoundaryQueryKeys {
   childKey: string
 }
 
+export const mapBoundaryQueryKeys = {
+  parentKey: 'region',
+  childKey: 'country'
+}
+
 // Vue Router query values can be strings, arrays, nulls, or undefined.
 // The map only needs a clean list of selected ids/names.
 const queryList = (value: LocationQuery[string]) => {

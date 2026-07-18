@@ -14,6 +14,9 @@ const route = useRoute();
 const vendorStore = useVendorStore();
 const filtersStore = useFiltersStore();
 const isVendorDataReady = computed(() => Boolean(vendorStore.vendors.length));
+// Region views use the legend for region colors or country density. Country
+// detail views hide it because the map is focused on one selected boundary.
+const shouldShowLegend = computed(() => !route.query.country && isVendorDataReady.value);
 
 const updateRouteData = async (query: typeof route.query) => {
   await vendorStore.updateVendors([query]);
@@ -44,7 +47,7 @@ watch(() => route.query, (newQuery) => {
       <img style="width: 200px; height: auto;" :src="spinner"/>
     </div>
     <Transition name="slide-fade">
-      <WorldLegend v-if="!route.query.region && !route.query.country && isVendorDataReady"/>
+      <WorldLegend v-if="shouldShowLegend"/>
     </Transition>
   </div>
 </template>
