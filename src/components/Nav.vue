@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from "vue-router";
 import type { LocationQuery } from "vue-router";
-import { watch, ref } from 'vue';
+import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
 import home0 from "@/assets/images/home_FILL0.svg";
@@ -9,68 +10,80 @@ import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
 import filters1 from "@/assets/images/filters_FILL1.svg";
 
-const route = useRoute(); // Import the route
-let location = ref('any location');
-let sectors = ref('any sector');
+const route = useRoute();
+const vendorStore = useVendorStore();
+const filtersStore = useFiltersStore();
 
-// Normalize route query values before turning them into human-readable nav text.
-const queryText = (value: LocationQuery[string]) => {
+const hasActiveFilters = computed(() => {
+  return Boolean(route.query.region || route.query.country || route.query.services);
+});
+
+// Route query values may arrive as a string or array. Normalize them before
+// turning them into the readable sentence shown in the nav.
+const queryList = (value: LocationQuery[string]) => {
   if (Array.isArray(value)) {
-    return value.filter(Boolean).join(',');
+    return value.filter(Boolean);
   }
 
-  return value ?? '';
+  return value ? value.split(',').filter(Boolean) : [];
 }
 
-const updateNav = async (query: LocationQuery) => {
-  // no location is selected
-  if (!query || query && !query.region && !query.country) { location.value = 'any location'}
-  // one or more regions are selected
-  else if (query.region) { location.value = queryText(query.region) }
-  // one or more countries are selected
-  else if (query.country) { location.value = queryText(query.country) }
+const formatSummary = (items: string[], fallback: string) => {
+  if (!items.length) return fallback;
+  if (items.length === 1) return items[0];
 
-  // no sector is selected
-  if (!query || query && !query.services) { sectors.value = 'any sector'}
-  // one or more sectors are selected
-  else if (query.services) { sectors.value = queryText(query.services) }
+  return `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
 }
 
-watch(
-  () => route.query, (newQuery) => {
-  // Keep the nav summary synced with the URL filters.
-  updateNav(newQuery);
-  },
-  { immediate: true }
-);
+const selectedRegions = computed(() => queryList(route.query.region));
+const selectedCountries = computed(() => queryList(route.query.country));
+const selectedServices = computed(() => queryList(route.query.services));
+
+const locationSummary = computed(() => {
+  const selectedLocations = selectedRegions.value.length
+    ? selectedRegions.value
+    : selectedCountries.value;
+
+  return formatSummary(selectedLocations, 'any location');
+});
+
+const sectorSummary = computed(() => {
+  return formatSummary(selectedServices.value, 'any sector');
+});
 </script>
 
 <template>
   <div class="nav_container">
-    <nav>
-      <div class="nav_img" v-if="!route.query.region && !route.query.country && !route.query.services">
-        <img :src="home1" />
-      </div>
-      <router-link class="nav_img" to="/map" v-else>
-        <img data-fill="0" :src="home0" />
-        <img data-fill="1" :src="home1" />
-      </router-link>
-      <div class="nav_details">
-        <a @click="useVendorStore().toggleVendors()">Vendors</a>
-        <span> serving </span>
-        <a @click="useFiltersStore().toggleFiltersView('location')">{{ location.replace(/,/g, ', ').replace(/,(?=[^,]+$)/, ' or ') }}</a>
-        <span> in </span>
-        <a @click="useFiltersStore().toggleFiltersView('sector')">{{ sectors.replace(/,/g, ', ').replace(/,(?=[^,]+$)/, ' or ') }}</a>
-      </div>
-      <div class="nav_img" @click="useFiltersStore().toggleFiltersView('location')">
-        <img data-fill="0" :src="filters0" />
-        <img data-fill="1" :src="filters1" />
-      </div>
-    </nav>
+    <ResizeTransition class="nav_shell" axis="both" :duration="150">
+      <nav>
+        <div class="nav_img" v-if="!hasActiveFilters" aria-hidden="true">
+          <img :src="home1" alt="" />
+        </div>
+        <router-link class="nav_img" to="/map" aria-label="Clear filters" v-else>
+          <img data-fill="0" :src="home0" alt="" />
+          <img data-fill="1" :src="home1" alt="" />
+        </router-link>
+        <div class="nav_details">
+          <button class="nav_text_button" type="button" @click="vendorStore.toggleVendors()">Vendors</button>
+          <span> serving </span>
+          <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('location')">
+            {{ locationSummary }}
+          </button>
+          <span> in </span>
+          <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('sector')">
+            {{ sectorSummary }}
+          </button>
+        </div>
+        <button class="nav_img" type="button" aria-label="Open filters" @click="filtersStore.toggleFiltersView('location')">
+          <img data-fill="0" :src="filters0" alt="" />
+          <img data-fill="1" :src="filters1" alt="" />
+        </button>
+      </nav>
+    </ResizeTransition>
   </div>
 </template>
 
-<style>
+<style scoped>
 .nav_container {
   width: 100%;
   display: grid;
@@ -82,44 +95,56 @@ watch(
 }
 nav {
   display: grid;
-  grid-template-columns: 50px 1fr 50px;
+  grid-template-columns: 50px max-content 50px;
   align-items: center;
+  width: fit-content;
+  max-width: calc(100vw - 40px);
+}
+.nav_shell {
   border-radius: 6px;
-  max-width: calc(100% - 40px);
+  max-width: calc(100vw - 40px);
   background-color: #002F6C;
   color: #fff;
   font-size: 18px;
   font-weight: 400;
   z-index: 500;
   text-align: center;
-  -webkit-box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
-  -moz-box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
   box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
 }
 .nav_img {
+  appearance: none;
+  border: 0;
   display: flex;
   justify-content: center;
   height: 52px;
   padding: 16px 0px;
   width: 50px;
+  background: transparent;
+  cursor: pointer;
 }
-img[data-fill="0"], .nav_img:hover > img[data-fill="1"] {
+.nav_img img[data-fill="0"],
+.nav_img:hover > img[data-fill="1"] {
   display: block;
-  cursor: pointer;
 }
-img[data-fill="1"], .nav_img:hover > img[data-fill="0"] {
+.nav_img img[data-fill="1"],
+.nav_img:hover > img[data-fill="0"] {
   display: none;
-  cursor: pointer;
 }
 .nav_details {
   display: block;
+  width: max-content;
+  max-width: calc(100vw - 140px);
   padding: 15px 10px;
   margin: 0px;
 }
-.nav_details a {
+.nav_text_button {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
   color: #fff;
+  font: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
-
 </style>

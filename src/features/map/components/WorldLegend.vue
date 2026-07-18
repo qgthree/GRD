@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useMapSettingsStore } from "@/stores/mapSettingsStore";
 import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
@@ -72,40 +73,42 @@ const selectRegion = (regionName: string) => {
         <span v-if="route.query.services" style="font-style: italic;"> (filtered)</span>
       </div>
     </div>
-    <div class="component_body">
-      <div v-if="selectedRegion">
-        <div class="legend-density" v-for="bucket in densityLegendBuckets" :key="bucket.label">
-          <div class="color_container">
-            <div
-              class="legend-region_color"
-              :style="{
-                'background-color': selectedRegion.color,
-                opacity: bucket.fillOpacity
-              }">
+    <ResizeTransition>
+      <div class="component_body">
+        <div v-if="selectedRegion">
+          <div class="legend-density" v-for="bucket in densityLegendBuckets" :key="bucket.label">
+            <div class="color_container">
+              <div
+                class="legend-region_color"
+                :style="{
+                  'background-color': selectedRegion.color,
+                  opacity: bucket.fillOpacity
+                }">
+              </div>
             </div>
+            <div class="density-label">{{ bucket.label }}</div>
           </div>
-          <div class="density-label">{{ bucket.label }}</div>
         </div>
-      </div>
 
-      <template v-else>
-        <button
-          class="legend-region"
-          v-for="region in visibleRegions"
-          :key="region.name"
-          type="button"
-          @click="selectRegion(region.name)"
-        >
-          <div class="color_container">
-            <div class="legend-region_color" :style="{ 'background-color': region.color }"></div>
-          </div>
-          <div class="legend-region_name">{{ region.name }}</div>
-          <div class="vendorCount">{{ vendorStore.regionVendorCount(region.name) }} vendors</div>
-        </button>
-        <!-- Global vendors are counted separately because they appear in every region total. -->
-        <div class="note">Totals include {{ vendorStore.regionVendorCount("Global") }} vendors listed as "Global"</div>
-      </template>
-    </div>
+        <template v-else>
+          <button
+            class="legend-region"
+            v-for="region in visibleRegions"
+            :key="region.name"
+            type="button"
+            @click="selectRegion(region.name)"
+          >
+            <div class="color_container">
+              <div class="legend-region_color" :style="{ 'background-color': region.color }"></div>
+            </div>
+            <div class="legend-region_name">{{ region.name }}</div>
+            <div class="vendorCount">{{ vendorStore.regionVendorCount(region.name) }} vendors</div>
+          </button>
+          <!-- Global vendors are counted separately because they appear in every region total. -->
+          <div class="note">Totals include {{ vendorStore.regionVendorCount("Global") }} vendors listed as "Global"</div>
+        </template>
+      </div>
+    </ResizeTransition>
   </div>
 </template>
 

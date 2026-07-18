@@ -4,6 +4,7 @@ import { ref, computed, watch } from 'vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
 import AppLink from '@/components/AppLink.vue'
+import ResizeTransition from '@/components/ResizeTransition.vue'
 import { formatServiceName } from '@/features/vendors/utils/vendorFormatters'
 import print from "@/assets/images/print.svg";
 import close from "@/assets/images/close.svg";
@@ -63,73 +64,74 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
 </script>
 
 <template>
-  <div id="vlist">
-    <div class="component_header">
-      <div class="header-left">{{ filteredVendors.length }} Vendor<span v-if="filteredVendors.length !== 1">s</span></div>
-      <div class="header-right">
-        <img :src="print" style="margin-right: 10px; display: none;" />
-        <img :src="close" @click="vendorStore.toggleVendors()" />
+  <ResizeTransition id="vlist">
+    <div class="vendor-list-content">
+      <div class="component_header">
+        <div class="header-left">{{ filteredVendors.length }} Vendor<span v-if="filteredVendors.length !== 1">s</span></div>
+        <div class="header-right">
+          <img :src="print" style="margin-right: 10px; display: none;" />
+          <img :src="close" @click="vendorStore.toggleVendors()" />
+        </div>
+      </div>
+      <div class="component_body">
+        <input v-model="vendorSearch" type="text" placeholder="search for a vendor" />
+      </div>
+      <div class="component_body vendor-list-body">
+        <div ref="vendorScroll" class="vendor-scroll">
+          <div class="searchResultsDetails" v-if="vendorSearch"><strong>{{ searchFilteredVendors.length }}</strong> <span v-if="searchFilteredVendors.length === 1"><strong>vendor</strong> contains</span><span v-else><strong>vendors</strong> contain</span> details that include your search.</div>
+          <transition-group name="list-card" tag="div">
+            <div class="list-card" v-for="vendor in searchFilteredVendors" :key="vendor.id" @click="toggleVisibility(vendor.id, $event)">
+              <div class="list-data list-data_title-wrapper">
+                <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.region.includes('Global')" class="global list-data_item">global</div>
+              </div>
+              <div v-show="vendor.isVisible" class="list-data_details">
+                <div class="list-data">
+                  <span class="list-data_label">
+                    Services:
+                  </span>
+                  <div class="list-data_item" v-for="(service, index) in vendor.subsectors" :key="index">{{ formatServiceName(service) }}</div>
+                </div>
+                <div class="list-data">
+                  <span class="list-data_label">
+                    Countries of Operation:
+                  </span>
+                  <span v-for="(country, index) in vendor.country_location" :key="index">{{ getCountryName(country) }}<span v-if="index < vendor.country_location.length - 1">, </span></span>
+                </div>
+                <div class="list-data">
+                  <span class="list-data_label">
+                    HQ Location:
+                  </span>
+                  <span>{{ vendor['city_/_subsidiary_location'] }}</span>
+                </div>
+                <div class="list-data" v-if="vendor['primary_contact(s)']">
+                  <span class="list-data_label">
+                    Primary Contact:
+                  </span>
+                  <span>{{ vendor['primary_contact(s)'] }}</span>
+                </div>
+                <div class="list-data" v-if="vendor.phone">
+                  <span class="list-data_label">
+                    Phone:
+                  </span>
+                  <span>{{ vendor.phone }}</span>
+                </div>
+                <div class="list-data" v-if="vendor.url">
+                  <span class="list-data_label">
+                    URL:
+                  </span>
+                  <AppLink :to="vendor.url">{{ vendor.url }}</AppLink>
+                </div>
+              </div>
+            </div>
+          </transition-group>
+        </div>
       </div>
     </div>
-    <div class="component_body">
-      <input v-model="vendorSearch" type="text" placeholder="search for a vendor" />
-    </div>
-    <div class="component_body vendor-list-body">
-      <div ref="vendorScroll" class="vendor-scroll">
-        <div class="searchResultsDetails" v-if="vendorSearch"><strong>{{ searchFilteredVendors.length }}</strong> <span v-if="searchFilteredVendors.length === 1"><strong>vendor</strong> contains</span><span v-else><strong>vendors</strong> contain</span> details that include your search.</div>
-        <transition-group name="list-card" tag="div">
-          <div class="list-card" v-for="vendor in searchFilteredVendors" :key="vendor.id" @click="toggleVisibility(vendor.id, $event)">
-            <div class="list-data list-data_title-wrapper">
-              <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.region.includes('Global')" class="global list-data_item">global</div>
-            </div>
-            <div v-show="vendor.isVisible" class="list-data_details">
-              <div class="list-data">
-                <span class="list-data_label">
-                  Services:
-                </span>
-                <div class="list-data_item" v-for="(service, index) in vendor.subsectors" :key="index">{{ formatServiceName(service) }}</div>
-              </div>
-              <div class="list-data">
-                <span class="list-data_label">
-                  Countries of Operation:
-                </span>
-                <span v-for="(country, index) in vendor.country_location" :key="index">{{ getCountryName(country) }}<span v-if="index < vendor.country_location.length - 1">, </span></span>
-              </div>
-              <div class="list-data">
-                <span class="list-data_label">
-                  HQ Location:
-                </span>
-                <span>{{ vendor['city_/_subsidiary_location'] }}</span>
-              </div>
-              <div class="list-data" v-if="vendor['primary_contact(s)']">
-                <span class="list-data_label">
-                  Primary Contact:
-                </span>
-                <span>{{ vendor['primary_contact(s)'] }}</span>
-              </div>
-              <div class="list-data" v-if="vendor.phone">
-                <span class="list-data_label">
-                  Phone:
-                </span>
-                <span>{{ vendor.phone }}</span>
-              </div>
-              <div class="list-data" v-if="vendor.url">
-                <span class="list-data_label">
-                  URL:
-                </span>
-                <AppLink :to="vendor.url">{{ vendor.url }}</AppLink>
-              </div>
-            </div>
-          </div>
-        </transition-group>
-      </div>
-    </div>
-  </div>
+  </ResizeTransition>
 </template>
 
 <style scoped>
   #vlist {
-    display: grid;
     border-radius: 10px;
     width: 400px;
     max-height: calc(100vh - 160px);
@@ -143,6 +145,9 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
     -moz-box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
     box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
     overflow: hidden;
+  }
+  .vendor-list-content {
+    display: grid;
   }
   .component_body {
     max-height: calc(100vh - 279.5px);

@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { LocationQueryValue } from 'vue-router'
+import { useFiltersStore } from '@/stores/filtersStore'
 
 type QueryValue = LocationQueryValue | LocationQueryValue[] | undefined
 
@@ -15,10 +16,15 @@ const queryList = (value: QueryValue) => {
 export const useFilterQuery = () => {
   const route = useRoute()
   const router = useRouter()
+  const filtersStore = useFiltersStore()
 
   const selectedValues = (key: string) => computed(() => queryList(route.query[key]))
 
   const updateQuery = (updates: Record<string, string | undefined>) => {
+    if (filtersStore.status !== 'hidden') {
+      filtersStore.prepareFilterHistoryEntry(route.fullPath)
+    }
+
     void router.replace({
       query: {
         ...route.query,

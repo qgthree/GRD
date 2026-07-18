@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
+import CollapseTransition from '@/components/CollapseTransition.vue'
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import { useLocationStore } from '@/stores/locationStore'
 import { useMapSettingsStore } from '@/stores/mapSettingsStore'
@@ -137,15 +138,17 @@ onMounted(() => {
             <span aria-hidden="true">{{ filtersStore.isCountryRegionOpen(group.region) ? '−' : '+' }}</span>
           </button>
         </h3>
-        <div v-show="filtersStore.isCountryRegionOpen(group.region)" class="country-region-body filter-options">
-          <label class="filter-option" v-for="country in group.countries" :key="`${country.ISO3}-${country.name}`">
-            <input
-              type="checkbox"
-              :checked="selectedCountries.includes(country.ISO3)"
-              @change="toggleQueryValue('country', country.ISO3)" />
-            <span>{{ country.name }}</span>
-          </label>
-        </div>
+        <CollapseTransition>
+          <div v-show="filtersStore.isCountryRegionOpen(group.region)" class="country-region-body filter-options">
+            <label class="filter-option" v-for="country in group.countries" :key="`${country.ISO3}-${country.name}`">
+              <input
+                type="checkbox"
+                :checked="selectedCountries.includes(country.ISO3)"
+                @change="toggleQueryValue('country', country.ISO3)" />
+              <span>{{ country.name }}</span>
+            </label>
+          </div>
+        </CollapseTransition>
       </section>
     </div>
   </div>

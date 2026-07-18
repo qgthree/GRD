@@ -10,11 +10,25 @@ export const useFiltersStore = defineStore('filterStore', {
     status: 'hidden' as FilterStatus,
     locationMode: 'region' as LocationFilterMode,
     collapsedCountryRegions: [] as string[],
-    countryRegionsHaveInitialized: false
+    countryRegionsHaveInitialized: false,
+    filterHistoryEntryPrepared: false
   }),
   actions: {
     toggleFiltersView(status: FilterStatus) {
       this.status = status;
+
+      if (status === 'hidden') {
+        this.filterHistoryEntryPrepared = false;
+      }
+    },
+    prepareFilterHistoryEntry(currentPath: string) {
+      if (this.filterHistoryEntryPrepared || typeof window === 'undefined') return;
+
+      // Filter changes use router.replace while the modal is open. Push a
+      // duplicate starting URL once so those replacements edit only the modal's
+      // working history entry and the prior map state remains behind it.
+      window.history.pushState(window.history.state, '', currentPath);
+      this.filterHistoryEntryPrepared = true;
     },
     setLocationMode(mode: LocationFilterMode) {
       this.locationMode = mode;
