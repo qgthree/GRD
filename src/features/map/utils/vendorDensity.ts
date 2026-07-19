@@ -6,8 +6,9 @@ export interface VendorDensityBucket {
 }
 
 const maxDensityBuckets = 5
-const minimumOpacity = 0.14
-const maximumOpacity = 0.75
+const zeroVendorOpacity = 0.06
+const singleVendorOpacity = 0.22
+const maximumOpacity = 0.56
 
 const vendorLabel = (count: number) => {
   return count === 1 ? 'vendor' : 'vendors'
@@ -21,22 +22,23 @@ const bucketLabel = (bucket: Pick<VendorDensityBucket, 'min' | 'max'>) => {
   return `${bucket.min}-${bucket.max} vendors`
 }
 
-const bucketOpacity = (index: number, bucketCount: number) => {
-  if (bucketCount === 1) return maximumOpacity
+const bucketOpacity = (bucket: Pick<VendorDensityBucket, 'min' | 'max'>, maxCount: number) => {
+  if (bucket.max <= 0) return zeroVendorOpacity
+  if (maxCount <= 1) return singleVendorOpacity
 
-  // Buckets are created from lowest to highest vendor presence, so opacity
-  // increases in that same order.
-  const step = (maximumOpacity - minimumOpacity) / (bucketCount - 1)
-  return minimumOpacity + step * index
+  // One vendor should remain visually light. Higher counts ramp smoothly, but
+  // the darkest state still leaves boundary lines readable.
+  const normalizedCount = (bucket.max - 1) / (maxCount - 1)
+  return singleVendorOpacity + ((maximumOpacity - singleVendorOpacity) * Math.sqrt(normalizedCount))
 }
 
-// Turns country-level vendor counts into up to five visual ranges. The ranges
-// are based on unique count values so repeated counts do not collapse the map
-// into one large bucket.
+// Turns geography-level vendor counts into up to five visual ranges. Opacity is
+// anchored to count values so low-count maps do not become overly dark.
 export const createVendorDensityBuckets = (counts: number[]) => {
   const uniqueCounts = [...new Set(counts)]
     .sort((firstCount, secondCount) => firstCount - secondCount)
   const bucketCount = Math.min(maxDensityBuckets, uniqueCounts.length)
+  const maxCount = uniqueCounts.at(-1) ?? 0
   const buckets: Array<Pick<VendorDensityBucket, 'min' | 'max'>> = []
 
   for (let index = 0; index < bucketCount; index += 1) {
@@ -49,9 +51,9 @@ export const createVendorDensityBuckets = (counts: number[]) => {
     })
   }
 
-  return buckets.map((bucket, index) => ({
+  return buckets.map((bucket) => ({
     ...bucket,
-    fillOpacity: bucketOpacity(index, buckets.length),
+    fillOpacity: bucketOpacity(bucket, maxCount),
     label: bucketLabel(bucket)
   }))
 }
