@@ -6,7 +6,7 @@ import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
 import { useRoute, useRouter } from "vue-router";
 import { getBoundarySelection, mapBoundaryQueryKeys } from '@/features/map/utils/mapQuery';
-import { findBoundaryStyle } from '@/features/map/utils/mapViewport';
+import { findBoundaryStyle, heatmapBoundaryColor } from '@/features/map/utils/mapViewport';
 import { createVendorDensityBuckets } from '@/features/map/utils/vendorDensity';
 
 const { leafSettings } = useMapSettingsStore();
@@ -77,7 +77,7 @@ const densityBuckets = computed(() => {
 // The map helper builds buckets light-to-dark; the legend reads better with the
 // highest vendor presence first.
 const densityLegendBuckets = computed(() => [...densityBuckets.value].reverse());
-const densityLegendColor = computed(() => selectedRegion.value?.color ?? '#5f749c');
+const densityLegendColor = computed(() => selectedRegion.value?.color ?? heatmapBoundaryColor);
 
 // Legend region clicks use the same URL state as map clicks and filters.
 const selectRegion = (regionName: string) => {

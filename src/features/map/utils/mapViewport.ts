@@ -1,6 +1,8 @@
 import L from 'leaflet'
 import type { BoundaryStyleSetting, CountryFeature, LeafSettings } from '@/features/map/types'
 
+export const heatmapBoundaryColor = '#651D32'
+
 // Leaflet expects a tuple-like LatLngExpression, while the settings store keeps
 // centers as simple number arrays for easy data entry.
 export const asMapCenter = (center: number[]) => center as L.LatLngExpression
@@ -10,12 +12,9 @@ export const findBoundaryStyle = (styles: BoundaryStyleSetting[], name: string) 
 
   if (storedStyle) return storedStyle
 
-  const palette = ['#5f7f5f', '#8d6b3d', '#5f749c', '#9a5c61', '#4f868c', '#7b679b', '#7a7f3f']
-  const hash = [...name].reduce((total, char) => total + char.charCodeAt(0), 0)
-
   return {
     name,
-    color: palette[hash % palette.length],
+    color: heatmapBoundaryColor,
     center: [39, -98],
     zoom: 4
   }

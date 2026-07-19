@@ -1,5 +1,6 @@
 import L from 'leaflet'
 import type { BoundaryStyleSetting, LeafSettings, MapFeature } from '@/features/map/types'
+import { heatmapBoundaryColor } from '@/features/map/utils/mapViewport'
 
 interface BoundaryLayerOptions<TFeature extends MapFeature<any>> {
   features: TFeature[]
@@ -17,7 +18,7 @@ interface BoundaryLayerOptions<TFeature extends MapFeature<any>> {
 
 const fallbackBoundaryStyle: BoundaryStyleSetting = {
   name: '',
-  color: '#999',
+  color: heatmapBoundaryColor,
   center: [25, 10],
   zoom: 1
 }
