@@ -11,8 +11,8 @@ export const useMapSettingsStore = defineStore('mapSettingsStore', {
         },
         leafSettings: {
             url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png',
-            mapCenter: [25, 10],
-            mapZoom: 1,
+            mapCenter: [39, -98],
+            mapZoom: 4,
             minZoom: 2.5,
             maxZoom: 15,
             features: {
@@ -21,28 +21,7 @@ export const useMapSettingsStore = defineStore('mapSettingsStore', {
                 mediumOpacity: 0.5,
                 lightOpacity: 0.3
             },
-            // Region settings connect the GeoJSON region names to visual colors
-            // and default zoom positions.
-            region: [
-                {
-                    name: "Africa",
-                    color: '#82204A',
-                    center: [-3, 17],
-                    zoom: 3.5
-                },
-                {
-                    name: "ALAC",
-                    color: '#558C8C',
-                    center: [0, 17],
-                    zoom: 2.8
-                },
-                {
-                    name: "MENAE",
-                    color: '#D48D00',
-                    center: [46.5, 10],
-                    zoom: 3
-                }
-            ],
+            region: [],
             // https://leafletjs.com/reference.html#map-option
             mapOptions: {
                 zoomSnap: 0.01, // Zoom level multiplier

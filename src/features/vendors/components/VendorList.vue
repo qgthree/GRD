@@ -13,11 +13,11 @@ import close from "@/assets/images/close.svg";
 // and expanded/collapsed display state.
 const vendorStore = useVendorStore();
 const { filteredVendors } = storeToRefs(vendorStore);
-const countries = useLocationStore().countries;
+const districts = useLocationStore().countries;
 
-// Vendor records store country ids. The list displays country names when the
-// local country metadata has a match.
-const getCountryName = (ISO3: string) => countries.find((country) => country.ISO3 == ISO3)?.name ?? ISO3;
+const getDistrictName = (districtId: string) => {
+  return districts.find((district) => district.ISO3 === districtId)?.name ?? districtId;
+}
 
 // This model is local to the input below and narrows the already route-filtered
 // vendor results.
@@ -34,7 +34,7 @@ let searchFilteredVendors = computed(() => {
       vendor.email && vendor.email.toLowerCase().includes(search) ||
       vendor['primary_contact(s)'] && vendor['primary_contact(s)'].toLowerCase().includes(search) ||
       vendor.phone && vendor.phone.toLowerCase().includes(search) ||
-      vendor.region && vendor.region.includes(search)
+      vendor.state && vendor.state.some((state) => state.toLowerCase().includes(search))
     )
   });
 });
@@ -82,7 +82,7 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
           <transition-group name="list-card" tag="div">
             <div class="list-card" v-for="vendor in searchFilteredVendors" :key="vendor.id" @click="toggleVisibility(vendor.id, $event)">
               <div class="list-data list-data_title-wrapper">
-                <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.region.includes('Global')" class="global list-data_item">global</div>
+                <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.state.includes('Global')" class="global list-data_item">global</div>
               </div>
               <div v-show="vendor.isVisible" class="list-data_details">
                 <div class="list-data">
@@ -93,9 +93,10 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
                 </div>
                 <div class="list-data">
                   <span class="list-data_label">
-                    Countries of Operation:
+                    Congressional Districts:
                   </span>
-                  <span v-for="(country, index) in vendor.country_location" :key="index">{{ getCountryName(country) }}<span v-if="index < vendor.country_location.length - 1">, </span></span>
+                  <span v-if="!vendor.district_location.length">All districts</span>
+                  <span v-for="(district, index) in vendor.district_location" :key="index">{{ getDistrictName(district) }}<span v-if="index < vendor.district_location.length - 1">, </span></span>
                 </div>
                 <div class="list-data">
                   <span class="list-data_label">

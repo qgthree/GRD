@@ -1,24 +1,25 @@
 import type L from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 
-// Region names come from the BHA map data. The string fallback keeps the app
-// tolerant if future data adds a region before this type is updated.
+// Parent geography names come from TIGERweb state boundaries. The string
+// fallback keeps the app tolerant if the source changes its labels.
 export type RegionName = 'Africa' | 'ALAC' | 'MENAE' | string
 
-// The region GeoJSON only needs the BHA region identifier for current styling
-// and routing behavior.
 export interface RegionProperties {
   BHA_REGION: RegionName
+  STATE: string
+  STUSAB: string
+  LAT_CENT: number
+  LONG_CENT: number
 }
 
-// Country features contain many more fields in the source file; this type names
-// only the properties the app currently reads.
 export interface CountryProperties {
   BHA_Reg: RegionName
   ISO3: string
   USG_Name: string
   LAT_CENT: number
   LONG_CENT: number
+  CD119: string
 }
 
 export type MapFeature<TProperties> = Feature<Geometry, TProperties>

@@ -3,11 +3,10 @@ import { computed, onMounted, watch } from 'vue'
 import CollapseTransition from '@/components/CollapseTransition.vue'
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import { useLocationStore } from '@/stores/locationStore'
-import { useMapSettingsStore } from '@/stores/mapSettingsStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import type { Country } from '@/features/locations/types'
 
-type LocationFilterMode = 'region' | 'country'
+type LocationFilterMode = 'state' | 'district'
 type CountryGroup = {
   region: string
   countries: Country[]
@@ -15,13 +14,12 @@ type CountryGroup = {
 
 const locationStore = useLocationStore()
 const filtersStore = useFiltersStore()
-const { leafSettings } = useMapSettingsStore()
 const { route, selectedValues, toggleQueryValue, updateQuery } = useFilterQuery()
 
-const selectedRegions = selectedValues('region')
-const selectedCountries = selectedValues('country')
+const selectedStates = selectedValues('state')
+const selectedDistricts = selectedValues('district')
 
-const regions = computed(() => leafSettings.region.map((region) => region.name))
+const regions = computed(() => locationStore.regions.map((region) => region.name))
 const countries = computed(() => {
   const selectableRegions = new Set(regions.value)
 
@@ -50,14 +48,14 @@ const setLocationMode = (mode: LocationFilterMode) => {
   filtersStore.setLocationMode(mode)
 
   updateQuery(
-    mode === 'region'
-      ? { country: undefined }
-      : { region: undefined }
+    mode === 'state'
+      ? { district: undefined }
+      : { state: undefined }
   )
 }
 
 const selectedCountryCountForRegion = (countries: Country[]) => {
-  return countries.filter((country) => selectedCountries.value.includes(country.ISO3)).length
+  return countries.filter((country) => selectedDistricts.value.includes(country.ISO3)).length
 }
 
 watch(countryGroups, (groups) => {
@@ -66,14 +64,14 @@ watch(countryGroups, (groups) => {
   filtersStore.initializeCollapsedCountryRegions(groups.map((group) => group.region))
 }, { immediate: true })
 
-watch(() => [route.query.country, route.query.region], ([countryQuery, regionQuery]) => {
-  if (countryQuery) {
-    filtersStore.setLocationMode('country')
+watch(() => [route.query.district, route.query.state], ([districtQuery, stateQuery]) => {
+  if (districtQuery) {
+    filtersStore.setLocationMode('district')
     return
   }
 
-  if (regionQuery) {
-    filtersStore.setLocationMode('region')
+  if (stateQuery) {
+    filtersStore.setLocationMode('state')
   }
 }, { immediate: true })
 
@@ -86,36 +84,36 @@ onMounted(() => {
   <div id="locationTypeSelector">
     <button
       class="selectorLeft"
-      :class="{ active: filtersStore.locationMode === 'region' }"
+      :class="{ active: filtersStore.locationMode === 'state' }"
       type="button"
-      @click="setLocationMode('region')">
-      Filter By Region
+      @click="setLocationMode('state')">
+      Filter By State
     </button>
     <div class="selectorCenter">
       <label class="switch">
         <input
           type="checkbox"
-          :checked="filtersStore.locationMode === 'country'"
-          @change="setLocationMode(filtersStore.locationMode === 'region' ? 'country' : 'region')" />
+          :checked="filtersStore.locationMode === 'district'"
+          @change="setLocationMode(filtersStore.locationMode === 'state' ? 'district' : 'state')" />
         <span class="slider"></span>
       </label>
     </div>
     <button
       class="selectorRight"
-      :class="{ active: filtersStore.locationMode === 'country' }"
+      :class="{ active: filtersStore.locationMode === 'district' }"
       type="button"
-      @click="setLocationMode('country')">
-      Filter By Country
+      @click="setLocationMode('district')">
+      Filter By District
     </button>
   </div>
 
-  <div v-if="filtersStore.locationMode === 'region'" class="region-option-group">
+  <div v-if="filtersStore.locationMode === 'state'" class="region-option-group">
     <div class="region-options">
       <label class="filter-option" v-for="region in regions" :key="region">
         <input
           type="checkbox"
-          :checked="selectedRegions.includes(region)"
-          @change="toggleQueryValue('region', region)" />
+          :checked="selectedStates.includes(region)"
+          @change="toggleQueryValue('state', region)" />
         <span>{{ region }}</span>
       </label>
     </div>
@@ -142,8 +140,8 @@ onMounted(() => {
           <label class="filter-option" v-for="country in group.countries" :key="`${country.ISO3}-${country.name}`">
             <input
               type="checkbox"
-              :checked="selectedCountries.includes(country.ISO3)"
-              @change="toggleQueryValue('country', country.ISO3)" />
+              :checked="selectedDistricts.includes(country.ISO3)"
+              @change="toggleQueryValue('district', country.ISO3)" />
             <span>{{ country.name }}</span>
           </label>
         </div>

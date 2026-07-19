@@ -1,7 +1,67 @@
-import { countries as localCountries } from '@/data/countries'
-import type { Country } from '@/features/locations/types'
+import type { Country, Region } from '@/features/locations/types'
+import { queryTigerJson, tigerWebLayers } from '@/features/locations/api/tigerWeb'
 
-// This is the future swap point for country metadata from an external API.
+interface TigerStateProperties {
+  STATE: string
+  NAME: string
+  BASENAME: string
+  STUSAB: string
+}
+
+interface TigerCongressionalDistrictProperties {
+  GEOID: string
+  STATE: string
+  CD119: string
+  NAME: string
+  BASENAME: string
+}
+
+let statesRequest: Promise<Region[]> | null = null
+let congressionalDistrictsRequest: Promise<Country[]> | null = null
+
+export const getRegions = async (): Promise<Region[]> => {
+  statesRequest ??= queryTigerJson<TigerStateProperties>(tigerWebLayers.states, {
+    outFields: 'STATE,NAME,BASENAME,STUSAB',
+    orderByFields: 'NAME'
+  })
+    .then((states) => states.map((state) => ({
+      name: state.NAME || state.BASENAME,
+      code: state.STATE
+    })))
+    .catch((caughtError) => {
+      statesRequest = null
+      throw caughtError
+    })
+
+  return statesRequest
+}
+
 export const getCountries = async (): Promise<Country[]> => {
-  return localCountries.map((country) => ({ ...country }))
+  congressionalDistrictsRequest ??= Promise.all([
+    getRegions(),
+    queryTigerJson<TigerCongressionalDistrictProperties>(tigerWebLayers.congressionalDistricts119, {
+      outFields: 'GEOID,STATE,CD119,NAME,BASENAME',
+      orderByFields: 'STATE,CD119'
+    })
+  ])
+    .then(([states, districts]) => {
+      const stateNamesByCode = new Map(states.map((state) => [state.code, state.name]))
+
+      return districts.map((district) => {
+        const stateName = stateNamesByCode.get(district.STATE) ?? district.STATE
+
+        return {
+          name: district.NAME || `${stateName} Congressional District ${district.CD119}`,
+          ISO3: district.GEOID,
+          region: stateName,
+          type: '119th Congressional District'
+        }
+      })
+    })
+    .catch((caughtError) => {
+      congressionalDistrictsRequest = null
+      throw caughtError
+    })
+
+  return congressionalDistrictsRequest
 }

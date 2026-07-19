@@ -15,7 +15,7 @@ const vendorStore = useVendorStore();
 const filtersStore = useFiltersStore();
 
 const hasActiveFilters = computed(() => {
-  return Boolean(route.query.region || route.query.country || route.query.services);
+  return Boolean(route.query.state || route.query.district || route.query.services);
 });
 
 // Route query values may arrive as a string or array. Normalize them before
@@ -35,14 +35,14 @@ const formatSummary = (items: string[], fallback: string) => {
   return `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
 }
 
-const selectedRegions = computed(() => queryList(route.query.region));
-const selectedCountries = computed(() => queryList(route.query.country));
+const selectedStates = computed(() => queryList(route.query.state));
+const selectedDistricts = computed(() => queryList(route.query.district));
 const selectedServices = computed(() => queryList(route.query.services));
 
 const locationSummary = computed(() => {
-  const selectedLocations = selectedRegions.value.length
-    ? selectedRegions.value
-    : selectedCountries.value;
+  const selectedLocations = selectedStates.value.length
+    ? selectedStates.value
+    : selectedDistricts.value;
 
   return formatSummary(selectedLocations, 'any location');
 });

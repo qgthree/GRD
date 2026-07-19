@@ -1,9 +1,9 @@
 export interface Vendor {
   id: number;
   company_name: string;
-  region: string[];
+  state: string[];
   subsectors: string[];
-  country_location: string[];
+  district_location: string[];
   'city_/_subsidiary_location': string;
   'primary_contact(s)'?: string;
   phone?: string;
@@ -16,6 +16,6 @@ export interface Vendor {
 // These fields mirror the current URL query filters.
 export interface VendorQuery {
   services?: string | string[] | null;
-  region?: string | string[] | null;
-  country?: string | string[] | null;
+  state?: string | string[] | null;
+  district?: string | string[] | null;
 }

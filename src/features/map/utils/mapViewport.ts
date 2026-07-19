@@ -6,7 +6,19 @@ import type { BoundaryStyleSetting, CountryFeature, LeafSettings } from '@/featu
 export const asMapCenter = (center: number[]) => center as L.LatLngExpression
 
 export const findBoundaryStyle = (styles: BoundaryStyleSetting[], name: string) => {
-  return styles.find((style) => style.name === name)
+  const storedStyle = styles.find((style) => style.name === name)
+
+  if (storedStyle) return storedStyle
+
+  const palette = ['#5f7f5f', '#8d6b3d', '#5f749c', '#9a5c61', '#4f868c', '#7b679b', '#7a7f3f']
+  const hash = [...name].reduce((total, char) => total + char.charCodeAt(0), 0)
+
+  return {
+    name,
+    color: palette[hash % palette.length],
+    center: [39, -98],
+    zoom: 4
+  }
 }
 
 // Home and multi-region selections use the broad default view.

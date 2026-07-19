@@ -17,7 +17,6 @@ import { createBoundaryLayer } from "@/features/map/utils/mapLayers";
 import { getBoundarySelection, mapBoundaryQueryKeys } from "@/features/map/utils/mapQuery";
 import {
   findBoundaryStyle,
-  setBoundaryViewport,
   setFeatureViewport,
   setDefaultViewport
 } from "@/features/map/utils/mapViewport";
@@ -60,7 +59,7 @@ const initializeMap = () => {
 };
 
 const clearBoundaryLayers = () => {
-  boundaryLayerGroup.clearLayers();
+  boundaryLayerGroup?.clearLayers();
 }
 
 const setBoundaryLayer = (layer: L.GeoJSON) => {
@@ -68,10 +67,17 @@ const setBoundaryLayer = (layer: L.GeoJSON) => {
   boundaryLayerGroup.addLayer(layer);
 }
 
+const fitBoundaryLayer = (layer: L.GeoJSON) => {
+  const bounds = layer.getBounds();
+
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, { padding: [40, 40] });
+  }
+}
+
 const getBoundaryStyle = (boundaryName: string) => findBoundaryStyle(leafSettings.region, boundaryName);
 
-// Some disputed GeoJSON claim areas have blank ISO codes. Excluding them keeps
-// those shapes from becoming invalid routes like ?country=+.
+// Defensive check: district selections need Census GEOIDs to become valid routes.
 const hasCountryCode = (feature: CountryFeature) => {
   return Boolean(feature.properties.ISO3.trim());
 }
@@ -92,7 +98,7 @@ const isCurrentSelection = (expectedSelectionKey: string) => {
   return selectionKey(getBoundarySelection(route.query, mapBoundaryQueryKeys)) === expectedSelectionKey
 }
 
-const createParentBoundaries = (features: RegionFeature[]) => {
+const createParentBoundaries = (features: RegionFeature[], densityBuckets?: VendorDensityBucket[]) => {
   // Parent boundary layers render the broadest selectable geography. This
   // component decides what a click should do in the app.
   return createBoundaryLayer({
@@ -102,14 +108,20 @@ const createParentBoundaries = (features: RegionFeature[]) => {
     getBoundaryStyle,
     getStyleKey: (feature) => feature.properties.BHA_REGION,
     getLabel: (feature) => feature.properties.BHA_REGION,
-    getDetail: (feature) => `${vendorStore.regionVendorCount(feature.properties.BHA_REGION)} vendors`,
+    getDetail: (feature) => `${vendorStore.stateVendorCount(feature.properties.BHA_REGION)} vendors`,
     getHoverGroupKey: (feature) => feature.properties.BHA_REGION,
+    getFillOpacity: densityBuckets
+      ? (feature) => {
+        const vendorCount = vendorStore.stateVendorCount(feature.properties.BHA_REGION)
+        return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
+      }
+      : undefined,
     onFeatureClick: (feature) => router.push({
       path: '/map',
       query: {
         ...route.query,
-        region: feature.properties.BHA_REGION,
-        country: undefined
+        state: feature.properties.BHA_REGION,
+        district: undefined
       }
     })
   })
@@ -127,12 +139,12 @@ const createChildBoundaries = (features: CountryFeature[], densityBuckets?: Vend
     interactive: childBoundaries.length > 1,
     getStyleKey: (feature) => feature.properties.BHA_Reg,
     getLabel: (feature) => feature.properties.USG_Name,
-    getDetail: (feature) => `${vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0} vendors`,
-    // Single-region views pass density buckets so country fills become a
-    // simple vendor-presence heatmap. Other country views use the base fill.
+    getDetail: (feature) => `${vendorStore.districtVendorCount(feature.properties.ISO3) ?? 0} vendors`,
+    // Single-state views pass density buckets so district fills become a
+    // simple vendor-presence heatmap. Other district views use the base fill.
     getFillOpacity: densityBuckets
       ? (feature) => {
-        const vendorCount = vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0
+        const vendorCount = vendorStore.districtVendorCount(feature.properties.ISO3) ?? 0
         return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
       }
       : undefined,
@@ -140,11 +152,17 @@ const createChildBoundaries = (features: CountryFeature[], densityBuckets?: Vend
       path: '/map',
       query: {
         ...route.query,
-        region: undefined,
-        country: feature.properties.ISO3
+        state: undefined,
+        district: feature.properties.ISO3
       }
     })
   })
+}
+
+const createStateDensityBuckets = (features: RegionFeature[]) => {
+  return createVendorDensityBuckets(features.map((feature) => {
+    return vendorStore.stateVendorCount(feature.properties.BHA_REGION)
+  }))
 }
 
 const renderMapSelection = async (query: LocationQuery, moveViewport = true) => {
@@ -154,11 +172,13 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
   const selection = getBoundarySelection(query, mapBoundaryQueryKeys);
   const currentSelectionKey = selectionKey(selection);
 
-  // Synchronous region views can replace the layer immediately. Country views
+  // Synchronous state views can replace the layer immediately. District views
   // load geometry first, then verify the route before replacing anything.
   if (selection.type === 'none') {
     // No URL selection means the user sees all parent boundaries.
-    setBoundaryLayer(createParentBoundaries(parentBoundaries.value.features));
+    const densityBuckets = createStateDensityBuckets(parentBoundaries.value.features);
+
+    setBoundaryLayer(createParentBoundaries(parentBoundaries.value.features, densityBuckets));
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
     }
@@ -171,7 +191,10 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
       return selection.ids.includes(feature.properties.BHA_REGION);
     })
 
-    setBoundaryLayer(createParentBoundaries(selectedParentBoundaries));
+    const densityBuckets = createStateDensityBuckets(selectedParentBoundaries);
+    const parentBoundaryLayer = createParentBoundaries(selectedParentBoundaries, densityBuckets);
+
+    setBoundaryLayer(parentBoundaryLayer);
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
     }
@@ -189,12 +212,14 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
     // Build density from the currently filtered vendor counts so service
     // filters are reflected in both the country fills and the legend.
     const densityBuckets = createVendorDensityBuckets(selectedChildBoundaries.map((feature) => {
-      return vendorStore.countryVendorCount(feature.properties.ISO3) ?? 0
+      return vendorStore.districtVendorCount(feature.properties.ISO3) ?? 0
     }))
 
-    setBoundaryLayer(createChildBoundaries(selectedChildBoundaries, densityBuckets));
+    const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries, densityBuckets);
+
+    setBoundaryLayer(childBoundaryLayer);
     if (moveViewport) {
-      setBoundaryViewport(map, getBoundaryStyle(selection.id), leafSettings);
+      fitBoundaryLayer(childBoundaryLayer);
     }
     return;
   }
@@ -207,7 +232,9 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
 
     const selectedChildBoundaries = childBoundaries.features
 
-    setBoundaryLayer(createChildBoundaries(selectedChildBoundaries));
+    const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries);
+
+    setBoundaryLayer(childBoundaryLayer);
 
     const firstChildBoundary = selectedChildBoundaries[0];
     const allChildBoundariesShareParent = selectedChildBoundaries.every((feature) => {
@@ -216,7 +243,7 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
 
     if (firstChildBoundary && allChildBoundariesShareParent) {
       if (moveViewport) {
-        setBoundaryViewport(map, getBoundaryStyle(firstChildBoundary.properties.BHA_Reg), leafSettings);
+        fitBoundaryLayer(childBoundaryLayer);
       }
       return;
     }
@@ -263,7 +290,7 @@ watch(() => vendorStore.filteredVendors, () => {
 onUnmounted(() => {
   // Leaflet attaches DOM/event handlers outside Vue, so remove them explicitly.
   clearBoundaryLayers();
-  map.remove();
+  map?.remove();
 });
 </script>
 

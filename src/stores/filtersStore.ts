@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia';
 
 type FilterStatus = 'hidden' | 'location' | 'sector'
-type LocationFilterMode = 'region' | 'country'
+type LocationFilterMode = 'state' | 'district'
 
 // Tracks which filter panel should be visible. The string values map directly to
 // the current filter UI modes.
 export const useFiltersStore = defineStore('filterStore', {
   state: () => ({
     status: 'hidden' as FilterStatus,
-    locationMode: 'region' as LocationFilterMode,
+    locationMode: 'state' as LocationFilterMode,
     collapsedCountryRegions: [] as string[],
     countryRegionsHaveInitialized: false,
     filterHistoryEntryPrepared: false
