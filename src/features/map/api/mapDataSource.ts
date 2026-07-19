@@ -4,6 +4,7 @@ import type {
   RegionFeature
 } from '@/features/map/types'
 import { queryTigerGeoJson, tigerWebLayers, type TigerFeature } from '@/features/locations/api/tigerWeb'
+import type { Geometry, Position } from 'geojson'
 
 interface TigerStateProperties {
   STATE: string
@@ -26,13 +27,86 @@ interface TigerCongressionalDistrictProperties {
 
 let parentBoundaryRequest: Promise<MapFeatureCollection<RegionFeature>> | null = null
 const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<CountryFeature>>>()
-const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v2:maxOffset0.0005:miFull'
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v3:maxOffset0.0005:miFull:antimeridian'
 const highFidelityStateBoundaryCodes = new Set(['26'])
 
 const coordinate = (value: string) => Number.parseFloat(value)
 
+const getLongitudeRange = (coordinates: unknown) => {
+  let minLongitude = Infinity
+  let maxLongitude = -Infinity
+
+  const walk = (value: unknown) => {
+    if (!Array.isArray(value)) return
+
+    if (typeof value[0] === 'number') {
+      const longitude = value[0]
+
+      minLongitude = Math.min(minLongitude, longitude)
+      maxLongitude = Math.max(maxLongitude, longitude)
+      return
+    }
+
+    value.forEach(walk)
+  }
+
+  walk(coordinates)
+
+  return { minLongitude, maxLongitude }
+}
+
+const normalizeCoordinateLongitude = (position: Position, centroidLongitude: number) => {
+  const [longitude, latitude, ...rest] = position
+
+  if (centroidLongitude < 0 && longitude > 0) {
+    return [longitude - 360, latitude, ...rest]
+  }
+
+  if (centroidLongitude > 0 && longitude < 0) {
+    return [longitude + 360, latitude, ...rest]
+  }
+
+  return position
+}
+
+const normalizeCoordinatesAcrossAntimeridian = <TCoordinates>(
+  coordinates: TCoordinates,
+  centroidLongitude: number
+): TCoordinates => {
+  if (!Array.isArray(coordinates)) return coordinates
+
+  if (typeof coordinates[0] === 'number') {
+    return normalizeCoordinateLongitude(coordinates as Position, centroidLongitude) as TCoordinates
+  }
+
+  return coordinates.map((coordinateSet: unknown) => {
+    return normalizeCoordinatesAcrossAntimeridian(coordinateSet, centroidLongitude)
+  }) as TCoordinates
+}
+
+const normalizeGeometryAcrossAntimeridian = (geometry: Geometry, centroidLongitude: number): Geometry => {
+  if (geometry.type === 'GeometryCollection') {
+    return {
+      ...geometry,
+      geometries: geometry.geometries.map((childGeometry) => {
+        return normalizeGeometryAcrossAntimeridian(childGeometry, centroidLongitude)
+      })
+    }
+  }
+
+  const { minLongitude, maxLongitude } = getLongitudeRange(geometry.coordinates)
+
+  if (maxLongitude - minLongitude <= 180) return geometry
+
+  return {
+    ...geometry,
+    coordinates: normalizeCoordinatesAcrossAntimeridian(geometry.coordinates, centroidLongitude)
+  } as Geometry
+}
+
 const normalizeStateFeature = (feature: TigerFeature<TigerStateProperties>): RegionFeature => ({
   ...feature,
+  geometry: normalizeGeometryAcrossAntimeridian(feature.geometry, coordinate(feature.properties.CENTLON)),
   properties: {
     BHA_REGION: feature.properties.NAME || feature.properties.BASENAME,
     STATE: feature.properties.STATE,
@@ -50,6 +124,7 @@ const normalizeCongressionalDistrictFeature = (
 
   return {
     ...feature,
+    geometry: normalizeGeometryAcrossAntimeridian(feature.geometry, coordinate(feature.properties.CENTLON)),
     properties: {
       BHA_Reg: stateName,
       ISO3: feature.properties.GEOID,
