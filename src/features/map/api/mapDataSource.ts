@@ -26,7 +26,8 @@ interface TigerCongressionalDistrictProperties {
 
 let parentBoundaryRequest: Promise<MapFeatureCollection<RegionFeature>> | null = null
 const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<CountryFeature>>>()
-const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v1:maxOffset0.0005'
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v2:maxOffset0.0005:miFull'
+const highFidelityStateBoundaryCodes = new Set(['26'])
 
 const coordinate = (value: string) => Number.parseFloat(value)
 
@@ -81,6 +82,28 @@ const writeSessionCache = (key: string, data: unknown) => {
   }
 }
 
+const getHighFidelityStateBoundary = async (stateCode: string) => {
+  const collection = await queryTigerGeoJson<TigerStateProperties>(tigerWebLayers.states, {
+    where: `STATE='${stateCode}'`,
+    outFields: 'STATE,NAME,BASENAME,STUSAB,CENTLAT,CENTLON',
+    maxAllowableOffset: undefined,
+    geometryPrecision: '5'
+  })
+
+  const feature = collection.features[0]
+
+  return feature ? normalizeStateFeature(feature) : null
+}
+
+const applyHighFidelityStateBoundaryOverrides = async (features: RegionFeature[]) => {
+  const overrides = await Promise.all([...highFidelityStateBoundaryCodes].map(getHighFidelityStateBoundary))
+  const overridesByStateCode = new Map(overrides
+    .filter((feature): feature is RegionFeature => Boolean(feature))
+    .map((feature) => [feature.properties.STATE, feature]))
+
+  return features.map((feature) => overridesByStateCode.get(feature.properties.STATE) ?? feature)
+}
+
 export const getParentBoundaries = async () => {
   parentBoundaryRequest ??= Promise.resolve(readSessionCache<MapFeatureCollection<RegionFeature>>(parentBoundarySessionCacheKey))
     .then((cachedBoundaries) => {
@@ -92,16 +115,17 @@ export const getParentBoundaries = async () => {
         geometryPrecision: '5'
       })
         .then((collection) => {
-          const boundaries = {
-            features: collection.features
-              .map(normalizeStateFeature)
-              .sort((firstFeature, secondFeature) => {
-                return firstFeature.properties.BHA_REGION.localeCompare(secondFeature.properties.BHA_REGION)
-              })
-          }
+          const features = collection.features.map(normalizeStateFeature)
+
+          return applyHighFidelityStateBoundaryOverrides(features)
+        })
+        .then((features) => {
+          const sortedFeatures = features.sort((firstFeature, secondFeature) => {
+            return firstFeature.properties.BHA_REGION.localeCompare(secondFeature.properties.BHA_REGION)
+          })
+          const boundaries = { features: sortedFeatures }
 
           writeSessionCache(parentBoundarySessionCacheKey, boundaries)
-
           return boundaries
         })
     })

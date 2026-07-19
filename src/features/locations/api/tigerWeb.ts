@@ -25,17 +25,19 @@ const tigerLayerUrl = (layerId: number, operation = 'query') => {
   return `${tigerWebBaseUrl}/${layerId}/${operation}`
 }
 
-const createQueryUrl = (layerId: number, params: Record<string, string>) => {
+const createQueryUrl = (layerId: number, params: Record<string, string | undefined>) => {
   const url = new URL(tigerLayerUrl(layerId), globalThis.location?.origin ?? 'http://localhost')
 
   Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined) return
+
     url.searchParams.set(key, value)
   })
 
   return url.toString()
 }
 
-export const queryTigerGeoJson = async <TProperties>(layerId: number, params: Record<string, string>) => {
+export const queryTigerGeoJson = async <TProperties>(layerId: number, params: Record<string, string | undefined>) => {
   const requestUrl = createQueryUrl(layerId, {
     where: '1=1',
     outFields: '*',
@@ -59,7 +61,7 @@ export const queryTigerGeoJson = async <TProperties>(layerId: number, params: Re
   return response.json() as Promise<{ features: TigerFeature<TProperties>[] }>
 }
 
-export const queryTigerJson = async <TProperties>(layerId: number, params: Record<string, string>) => {
+export const queryTigerJson = async <TProperties>(layerId: number, params: Record<string, string | undefined>) => {
   const requestUrl = createQueryUrl(layerId, {
     where: '1=1',
     outFields: '*',
