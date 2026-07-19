@@ -21,7 +21,7 @@ export const useMapSettingsStore = defineStore('mapSettingsStore', {
                 mediumOpacity: 0.5,
                 lightOpacity: 0.3
             },
-            region: [],
+            boundaryStyles: [],
             // https://leafletjs.com/reference.html#map-option
             mapOptions: {
                 zoomSnap: 0.01, // Zoom level multiplier

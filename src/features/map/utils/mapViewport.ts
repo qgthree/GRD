@@ -1,5 +1,5 @@
 import L from 'leaflet'
-import type { BoundaryStyleSetting, CountryFeature, LeafSettings } from '@/features/map/types'
+import type { BoundaryStyleSetting, DistrictFeature, LeafSettings } from '@/features/map/types'
 
 export const heatmapBoundaryColor = '#651D32'
 
@@ -20,7 +20,7 @@ export const findBoundaryStyle = (styles: BoundaryStyleSetting[], name: string) 
   }
 }
 
-// Home and multi-region selections use the broad default view.
+// Home and multi-state selections use the broad default view.
 export const setDefaultViewport = (map: L.Map, settings: LeafSettings) => {
   map.setView(asMapCenter(settings.mapCenter), settings.mapZoom)
 }
@@ -41,9 +41,9 @@ export const setBoundaryViewport = (
 
 // Single-feature selections zoom to the selected layer bounds with a small
 // padding point, then center on the feature's stored centroid.
-export const setFeatureViewport = (map: L.Map, feature: CountryFeature | undefined, layer: L.GeoJSON) => {
+export const setFeatureViewport = (map: L.Map, feature: DistrictFeature | undefined, layer: L.GeoJSON) => {
   if (!feature) return
 
   const zoom = map.getBoundsZoom(layer.getBounds(), false, L.point(200, 200))
-  map.setView([feature.properties.LAT_CENT, feature.properties.LONG_CENT], zoom)
+  map.setView([feature.properties.latCent, feature.properties.longCent], zoom)
 }

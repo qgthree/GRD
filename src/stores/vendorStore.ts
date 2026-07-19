@@ -44,7 +44,7 @@ export const useVendorStore = defineStore('vendorStore', {
     },
 
     async updateVendors(query: VendorQuery[]) {
-      await useLocationStore().loadCountries();
+      await useLocationStore().loadDistricts();
       await this.loadVendors();
 
       // Route watchers pass query objects in an array today. The first item is
@@ -69,7 +69,7 @@ export const useVendorStore = defineStore('vendorStore', {
       }
 
       if (states.length) {
-        const districtList = useLocationStore().countries.filter(district => states.includes(district.region));
+        const districtList = useLocationStore().districts.filter(district => states.includes(district.state));
         const checker = (vendor: Vendor) => {
           return states.some(state => vendorServesState(vendor, state, districtList));
         }
@@ -77,7 +77,7 @@ export const useVendorStore = defineStore('vendorStore', {
       }
 
       if (districts.length) {
-        const districtList = useLocationStore().countries.filter(district => districts.includes(district.ISO3));
+        const districtList = useLocationStore().districts.filter(district => districts.includes(district.geoid));
         const checker = (vendor: Vendor) => {
           return districtList.some(district => vendorServesDistrict(vendor, district));
         }
@@ -90,7 +90,7 @@ export const useVendorStore = defineStore('vendorStore', {
       this.show = !this.show;
     },
     stateVendorCount(state: string) {
-      const districtList = useLocationStore().countries.filter(district => state === district.region);
+      const districtList = useLocationStore().districts.filter(district => state === district.state);
       const checker = (vendor: Vendor) => {
         return vendorServesState(vendor, state, districtList);
       }
@@ -101,8 +101,8 @@ export const useVendorStore = defineStore('vendorStore', {
         return this.filteredVendors.filter(vendor => vendor.state.includes('Global')).length;
       }
     },
-    districtVendorCount(ISO3: string) {
-      const district = useLocationStore().countries.find(ctr => ctr.ISO3 === ISO3);
+    districtVendorCount(geoid: string) {
+      const district = useLocationStore().districts.find(district => district.geoid === geoid);
       if (district) {
         return this.filteredVendors.filter(vendor => vendorServesDistrict(vendor, district)).length;
       }

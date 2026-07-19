@@ -1,4 +1,4 @@
-import type { Country, Region } from '@/features/locations/types'
+import type { District, State } from '@/features/locations/types'
 import { queryTigerJson, tigerWebLayers } from '@/features/locations/api/tigerWeb'
 
 interface TigerStateProperties {
@@ -16,10 +16,10 @@ interface TigerCongressionalDistrictProperties {
   BASENAME: string
 }
 
-let statesRequest: Promise<Region[]> | null = null
-let congressionalDistrictsRequest: Promise<Country[]> | null = null
+let statesRequest: Promise<State[]> | null = null
+let congressionalDistrictsRequest: Promise<District[]> | null = null
 
-export const getRegions = async (): Promise<Region[]> => {
+export const getStates = async (): Promise<State[]> => {
   statesRequest ??= queryTigerJson<TigerStateProperties>(tigerWebLayers.states, {
     outFields: 'STATE,NAME,BASENAME,STUSAB',
     orderByFields: 'NAME'
@@ -36,9 +36,9 @@ export const getRegions = async (): Promise<Region[]> => {
   return statesRequest
 }
 
-export const getCountries = async (): Promise<Country[]> => {
+export const getDistricts = async (): Promise<District[]> => {
   congressionalDistrictsRequest ??= Promise.all([
-    getRegions(),
+      getStates(),
     queryTigerJson<TigerCongressionalDistrictProperties>(tigerWebLayers.congressionalDistricts119, {
       outFields: 'GEOID,STATE,CD119,NAME,BASENAME',
       orderByFields: 'STATE,CD119'
@@ -52,8 +52,8 @@ export const getCountries = async (): Promise<Country[]> => {
 
         return {
           name: district.NAME || `${stateName} Congressional District ${district.CD119}`,
-          ISO3: district.GEOID,
-          region: stateName,
+          geoid: district.GEOID,
+          state: stateName,
           type: '119th Congressional District'
         }
       })

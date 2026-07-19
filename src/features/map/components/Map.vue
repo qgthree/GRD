@@ -8,9 +8,9 @@ import { useMapSettingsStore } from "@/stores/mapSettingsStore";
 import { useRouter, useRoute } from "vue-router";
 import type { LocationQuery } from "vue-router";
 import type {
-  CountryFeature,
+  DistrictFeature,
   LeafSettings,
-  RegionFeature
+  StateFeature
 } from "@/features/map/types";
 import { useMapData } from "@/features/map/composables/useMapData";
 import { createBoundaryLayer } from "@/features/map/utils/mapLayers";
@@ -31,11 +31,11 @@ const route = useRoute();
 const vendorStore = useVendorStore();
 const { leafSettings } = useMapSettingsStore() as { leafSettings: LeafSettings };
 const {
-  parentBoundaries,
+  stateBoundaries,
   isLoading,
-  loadParentBoundaries,
-  loadChildBoundariesForRegions,
-  loadChildBoundariesForCountries
+  loadStateBoundaries,
+  loadDistrictBoundariesForStates,
+  loadDistrictBoundariesForGeoids
 } = useMapData();
 
 // Leaflet owns these objects outside Vue reactivity. Keeping them as plain
@@ -75,19 +75,19 @@ const fitBoundaryLayer = (layer: L.GeoJSON) => {
   }
 }
 
-const getBoundaryStyle = (boundaryName: string) => findBoundaryStyle(leafSettings.region, boundaryName);
+const getBoundaryStyle = (boundaryName: string) => findBoundaryStyle(leafSettings.boundaryStyles, boundaryName);
 
 // Defensive check: district selections need Census GEOIDs to become valid routes.
-const hasCountryCode = (feature: CountryFeature) => {
-  return Boolean(feature.properties.ISO3.trim());
+const hasDistrictGeoid = (feature: DistrictFeature) => {
+  return Boolean(feature.properties.geoid.trim());
 }
 
 const selectionKey = (selection: ReturnType<typeof getBoundarySelection>) => {
-  if (selection.type === 'parent' || selection.type === 'child') {
+  if (selection.type === 'state' || selection.type === 'district') {
     return `${selection.type}:${selection.id}`
   }
 
-  if (selection.type === 'parent-list' || selection.type === 'child-list') {
+  if (selection.type === 'state-list' || selection.type === 'district-list') {
     return `${selection.type}:${selection.ids.join(',')}`
   }
 
@@ -98,21 +98,21 @@ const isCurrentSelection = (expectedSelectionKey: string) => {
   return selectionKey(getBoundarySelection(route.query, mapBoundaryQueryKeys)) === expectedSelectionKey
 }
 
-const createParentBoundaries = (features: RegionFeature[], densityBuckets?: VendorDensityBucket[]) => {
-  // Parent boundary layers render the broadest selectable geography. This
+const createStateBoundaries = (features: StateFeature[], densityBuckets?: VendorDensityBucket[]) => {
+  // State boundary layers render the broadest selectable geography. This
   // component decides what a click should do in the app.
   return createBoundaryLayer({
     features,
     settings: leafSettings,
     map,
     getBoundaryStyle,
-    getStyleKey: (feature) => feature.properties.BHA_REGION,
-    getLabel: (feature) => feature.properties.BHA_REGION,
-    getDetail: (feature) => `${vendorStore.stateVendorCount(feature.properties.BHA_REGION)} vendors`,
-    getHoverGroupKey: (feature) => feature.properties.BHA_REGION,
+    getStyleKey: (feature) => feature.properties.name,
+    getLabel: (feature) => feature.properties.name,
+    getDetail: (feature) => `${vendorStore.stateVendorCount(feature.properties.name)} vendors`,
+    getHoverGroupKey: (feature) => feature.properties.name,
     getFillOpacity: densityBuckets
       ? (feature) => {
-        const vendorCount = vendorStore.stateVendorCount(feature.properties.BHA_REGION)
+        const vendorCount = vendorStore.stateVendorCount(feature.properties.name)
         return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
       }
       : undefined,
@@ -120,31 +120,31 @@ const createParentBoundaries = (features: RegionFeature[], densityBuckets?: Vend
       path: '/map',
       query: {
         ...route.query,
-        state: feature.properties.BHA_REGION,
+        state: feature.properties.name,
         district: undefined
       }
     })
   })
 }
 
-const createChildBoundaries = (features: CountryFeature[], densityBuckets?: VendorDensityBucket[]) => {
-  const childBoundaries = features.filter(hasCountryCode)
+const createDistrictBoundaries = (features: DistrictFeature[], densityBuckets?: VendorDensityBucket[]) => {
+  const districtBoundaries = features.filter(hasDistrictGeoid)
 
-  // Child boundary layers receive app behavior through callbacks for the same
+  // District boundary layers receive app behavior through callbacks for the same
   // reason: the utility should not import router or stores directly.
   return createBoundaryLayer({
-    features: childBoundaries,
+    features: districtBoundaries,
     settings: leafSettings,
     getBoundaryStyle,
-    interactive: childBoundaries.length > 1,
-    getStyleKey: (feature) => feature.properties.BHA_Reg,
-    getLabel: (feature) => feature.properties.USG_Name,
-    getDetail: (feature) => `${vendorStore.districtVendorCount(feature.properties.ISO3) ?? 0} vendors`,
+    interactive: districtBoundaries.length > 1,
+    getStyleKey: (feature) => feature.properties.stateName,
+    getLabel: (feature) => feature.properties.name,
+    getDetail: (feature) => `${vendorStore.districtVendorCount(feature.properties.geoid) ?? 0} vendors`,
     // Single-state views pass density buckets so district fills become a
     // simple vendor-presence heatmap. Other district views use the base fill.
     getFillOpacity: densityBuckets
       ? (feature) => {
-        const vendorCount = vendorStore.districtVendorCount(feature.properties.ISO3) ?? 0
+        const vendorCount = vendorStore.districtVendorCount(feature.properties.geoid) ?? 0
         return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
       }
       : undefined,
@@ -153,21 +153,21 @@ const createChildBoundaries = (features: CountryFeature[], densityBuckets?: Vend
       query: {
         ...route.query,
         state: undefined,
-        district: feature.properties.ISO3
+        district: feature.properties.geoid
       }
     })
   })
 }
 
-const createStateDensityBuckets = (features: RegionFeature[]) => {
+const createStateDensityBuckets = (features: StateFeature[]) => {
   return createVendorDensityBuckets(features.map((feature) => {
-    return vendorStore.stateVendorCount(feature.properties.BHA_REGION)
+    return vendorStore.stateVendorCount(feature.properties.name)
   }))
 }
 
 const renderMapSelection = async (query: LocationQuery, moveViewport = true) => {
   // Route watchers can run before async map data has loaded.
-  if (!parentBoundaries.value) return;
+  if (!stateBoundaries.value) return;
 
   const selection = getBoundarySelection(query, mapBoundaryQueryKeys);
   const currentSelectionKey = selectionKey(selection);
@@ -175,75 +175,75 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
   // Synchronous state views can replace the layer immediately. District views
   // load geometry first, then verify the route before replacing anything.
   if (selection.type === 'none') {
-    // No URL selection means the user sees all parent boundaries.
-    const densityBuckets = createStateDensityBuckets(parentBoundaries.value.features);
+    // No URL selection means the user sees all state boundaries.
+    const densityBuckets = createStateDensityBuckets(stateBoundaries.value.features);
 
-    setBoundaryLayer(createParentBoundaries(parentBoundaries.value.features, densityBuckets));
+    setBoundaryLayer(createStateBoundaries(stateBoundaries.value.features, densityBuckets));
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
     }
     return;
   }
 
-  if (selection.type === 'parent-list') {
-    // Multiple selected parent boundaries still use the broad map view.
-    const selectedParentBoundaries = parentBoundaries.value.features.filter((feature) => {
-      return selection.ids.includes(feature.properties.BHA_REGION);
+  if (selection.type === 'state-list') {
+    // Multiple selected state boundaries still use the broad map view.
+    const selectedStateBoundaries = stateBoundaries.value.features.filter((feature) => {
+      return selection.ids.includes(feature.properties.name);
     })
 
-    const densityBuckets = createStateDensityBuckets(selectedParentBoundaries);
-    const parentBoundaryLayer = createParentBoundaries(selectedParentBoundaries, densityBuckets);
+    const densityBuckets = createStateDensityBuckets(selectedStateBoundaries);
+    const stateBoundaryLayer = createStateBoundaries(selectedStateBoundaries, densityBuckets);
 
-    setBoundaryLayer(parentBoundaryLayer);
+    setBoundaryLayer(stateBoundaryLayer);
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
     }
     return;
   }
 
-  if (selection.type === 'parent') {
-    // One selected parent boundary drills into its child boundaries.
-    const childBoundaries = await loadChildBoundariesForRegions([selection.id])
-    // Lazy child-boundary requests can finish after the user has already
+  if (selection.type === 'state') {
+    // One selected state boundary drills into its district boundaries.
+    const districtBoundaries = await loadDistrictBoundariesForStates([selection.id])
+    // Lazy district-boundary requests can finish after the user has already
     // navigated back out. In that case, keep the newer route's layer intact.
     if (!isCurrentSelection(currentSelectionKey)) return
 
-    const selectedChildBoundaries = childBoundaries.features.filter(hasCountryCode)
+    const selectedDistrictBoundaries = districtBoundaries.features.filter(hasDistrictGeoid)
     // Build density from the currently filtered vendor counts so service
-    // filters are reflected in both the country fills and the legend.
-    const densityBuckets = createVendorDensityBuckets(selectedChildBoundaries.map((feature) => {
-      return vendorStore.districtVendorCount(feature.properties.ISO3) ?? 0
+    // filters are reflected in both the district fills and the legend.
+    const densityBuckets = createVendorDensityBuckets(selectedDistrictBoundaries.map((feature) => {
+      return vendorStore.districtVendorCount(feature.properties.geoid) ?? 0
     }))
 
-    const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries, densityBuckets);
+    const districtBoundaryLayer = createDistrictBoundaries(selectedDistrictBoundaries, densityBuckets);
 
-    setBoundaryLayer(childBoundaryLayer);
+    setBoundaryLayer(districtBoundaryLayer);
     if (moveViewport) {
-      fitBoundaryLayer(childBoundaryLayer);
+      fitBoundaryLayer(districtBoundaryLayer);
     }
     return;
   }
 
-  if (selection.type === 'child-list') {
-    // Multiple selected child boundaries show child shapes. If they are all in
-    // one parent boundary, zoom to that parent; otherwise use the broad view.
-    const childBoundaries = await loadChildBoundariesForCountries(selection.ids)
+  if (selection.type === 'district-list') {
+    // Multiple selected district boundaries show district shapes. If they are
+    // all in one state, zoom to that state; otherwise use the broad view.
+    const districtBoundaries = await loadDistrictBoundariesForGeoids(selection.ids)
     if (!isCurrentSelection(currentSelectionKey)) return
 
-    const selectedChildBoundaries = childBoundaries.features
+    const selectedDistrictBoundaries = districtBoundaries.features
 
-    const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries);
+    const districtBoundaryLayer = createDistrictBoundaries(selectedDistrictBoundaries);
 
-    setBoundaryLayer(childBoundaryLayer);
+    setBoundaryLayer(districtBoundaryLayer);
 
-    const firstChildBoundary = selectedChildBoundaries[0];
-    const allChildBoundariesShareParent = selectedChildBoundaries.every((feature) => {
-      return feature.properties.BHA_Reg === firstChildBoundary?.properties.BHA_Reg;
+    const firstDistrictBoundary = selectedDistrictBoundaries[0];
+    const allDistrictBoundariesShareState = selectedDistrictBoundaries.every((feature) => {
+      return feature.properties.stateName === firstDistrictBoundary?.properties.stateName;
     })
 
-    if (firstChildBoundary && allChildBoundariesShareParent) {
+    if (firstDistrictBoundary && allDistrictBoundariesShareState) {
       if (moveViewport) {
-        fitBoundaryLayer(childBoundaryLayer);
+        fitBoundaryLayer(districtBoundaryLayer);
       }
       return;
     }
@@ -254,18 +254,18 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
     return;
   }
 
-  // One selected child boundary becomes a one-item array for layer creation,
+  // One selected district boundary becomes a one-item array for layer creation,
   // then uses its bounds/centroid for the viewport.
-  const childBoundaries = await loadChildBoundariesForCountries([selection.id])
+  const districtBoundaries = await loadDistrictBoundariesForGeoids([selection.id])
   if (!isCurrentSelection(currentSelectionKey)) return
 
-  const selectedChildBoundary = childBoundaries.features[0]
-  const selectedChildBoundaries = selectedChildBoundary ? [selectedChildBoundary] : [];
-  const childBoundaryLayer = createChildBoundaries(selectedChildBoundaries);
+  const selectedDistrictBoundary = districtBoundaries.features[0]
+  const selectedDistrictBoundaries = selectedDistrictBoundary ? [selectedDistrictBoundary] : [];
+  const districtBoundaryLayer = createDistrictBoundaries(selectedDistrictBoundaries);
 
-  setBoundaryLayer(childBoundaryLayer);
+  setBoundaryLayer(districtBoundaryLayer);
   if (moveViewport) {
-    setFeatureViewport(map, selectedChildBoundary, childBoundaryLayer);
+    setFeatureViewport(map, selectedDistrictBoundary, districtBoundaryLayer);
   }
 }
 
@@ -273,7 +273,7 @@ onMounted(async () => {
   initializeMap();
   // Load after Leaflet initializes so the first render can immediately add the
   // correct route-selected overlay.
-  await loadParentBoundaries();
+  await loadStateBoundaries();
   renderMapSelection(route.query);
 });
 

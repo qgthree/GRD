@@ -16,75 +16,75 @@ const route = useRoute();
 const router = useRouter();
 
 const activeSelection = computed(() => getBoundarySelection(route.query, mapBoundaryQueryKeys));
-const regionStyles = computed(() => {
-  return locationStore.regions.map((region) => findBoundaryStyle(leafSettings.region, region.name));
+const stateStyles = computed(() => {
+  return locationStore.states.map((state) => findBoundaryStyle(leafSettings.boundaryStyles, state.name));
 });
-const visibleRegions = computed(() => {
+const visibleStates = computed(() => {
   const selection = activeSelection.value;
 
-  if (selection.type === 'parent') {
-    return regionStyles.value.filter((region) => region.name === selection.id);
+  if (selection.type === 'state') {
+    return stateStyles.value.filter((state) => state.name === selection.id);
   }
 
-  if (selection.type === 'parent-list') {
-    return regionStyles.value.filter((region) => selection.ids.includes(region.name));
+  if (selection.type === 'state-list') {
+    return stateStyles.value.filter((state) => selection.ids.includes(state.name));
   }
 
-  return regionStyles.value;
+  return stateStyles.value;
 });
-// A single selected region uses the legend for country-level vendor presence.
-// Empty or multi-region selections keep the broader region-color legend.
-const selectedRegion = computed(() => {
+// A single selected state uses the legend for district-level vendor presence.
+// Empty or multi-state selections keep the broader state density legend.
+const selectedState = computed(() => {
   const selection = activeSelection.value;
 
-  if (selection.type !== 'parent') return;
+  if (selection.type !== 'state') return;
 
-  return regionStyles.value.find((region) => region.name === selection.id);
+  return stateStyles.value.find((state) => state.name === selection.id);
 });
 const isStateDensityView = computed(() => {
   const selection = activeSelection.value;
 
-  return selection.type === 'none' || selection.type === 'parent-list';
+  return selection.type === 'none' || selection.type === 'state-list';
 });
 const selectedDistrict = computed(() => {
   const selection = activeSelection.value;
 
-  if (selection.type !== 'child') return;
+  if (selection.type !== 'district') return;
 
-  return locationStore.countries.find((country) => country.ISO3 === selection.id);
+  return locationStore.districts.find((district) => district.geoid === selection.id);
 });
 const legendTitle = computed(() => {
   if (selectedDistrict.value) return selectedDistrict.value.name;
-  if (selectedRegion.value || isStateDensityView.value) return 'Vendor Presence';
+  if (selectedState.value || isStateDensityView.value) return 'Vendor Presence';
 
   return 'States';
 });
 const densityBuckets = computed(() => {
   if (isStateDensityView.value) {
-    const stateCounts = visibleRegions.value.map((region) => vendorStore.stateVendorCount(region.name));
+    const stateCounts = visibleStates.value.map((state) => vendorStore.stateVendorCount(state.name));
 
     return createVendorDensityBuckets(stateCounts);
   }
 
-  if (!selectedRegion.value) return [];
+  if (!selectedState.value) return [];
 
-  const districtCounts = locationStore.countries
-    .filter((country) => country.region === selectedRegion.value?.name)
-    .map((country) => vendorStore.districtVendorCount(country.ISO3) ?? 0);
+  const districtCounts = locationStore.districts
+    .filter((district) => district.state === selectedState.value?.name)
+    .map((district) => vendorStore.districtVendorCount(district.geoid) ?? 0);
 
   return createVendorDensityBuckets(districtCounts);
 });
 // The map helper builds buckets light-to-dark; the legend reads better with the
 // highest vendor presence first.
 const densityLegendBuckets = computed(() => [...densityBuckets.value].reverse());
-const densityLegendColor = computed(() => selectedRegion.value?.color ?? heatmapBoundaryColor);
+const densityLegendColor = computed(() => selectedState.value?.color ?? heatmapBoundaryColor);
 
-// Legend region clicks use the same URL state as map clicks and filters.
-const selectRegion = (regionName: string) => {
+// Legend state clicks use the same URL state as map clicks and filters.
+const selectState = (stateName: string) => {
   void router.push({
     query: {
       ...route.query,
-      state: regionName,
+      state: stateName,
       district: undefined,
     },
   });
@@ -102,14 +102,14 @@ const selectRegion = (regionName: string) => {
     </div>
     <ResizeTransition>
       <div class="component_body">
-        <div v-if="selectedDistrict" class="country-vendor-count">
-          {{ vendorStore.districtVendorCount(selectedDistrict.ISO3) ?? 0 }} vendors
+        <div v-if="selectedDistrict" class="district-vendor-count">
+          {{ vendorStore.districtVendorCount(selectedDistrict.geoid) ?? 0 }} vendors
         </div>
 
         <div v-else-if="densityLegendBuckets.length">
           <div class="legend-density" v-for="bucket in densityLegendBuckets" :key="bucket.label">
             <div
-              class="legend-region_color"
+              class="legend-density-color"
               :style="{
                 'background-color': densityLegendColor,
                 opacity: bucket.fillOpacity
@@ -121,17 +121,17 @@ const selectRegion = (regionName: string) => {
 
         <template v-else>
           <button
-            class="legend-region"
-            v-for="region in visibleRegions"
-            :key="region.name"
+            class="legend-state"
+            v-for="state in visibleStates"
+            :key="state.name"
             type="button"
-            @click="selectRegion(region.name)"
+            @click="selectState(state.name)"
           >
-            <div class="legend-region_color" :style="{ 'background-color': region.color }"></div>
-            <div class="legend-region_name">{{ region.name }}</div>
-            <div class="vendorCount">{{ vendorStore.stateVendorCount(region.name) }} vendors</div>
+            <div class="legend-state-color" :style="{ 'background-color': state.color }"></div>
+            <div class="legend-state-name">{{ state.name }}</div>
+            <div class="vendorCount">{{ vendorStore.stateVendorCount(state.name) }} vendors</div>
           </button>
-          <!-- Global vendors are counted separately because they appear in every region total. -->
+          <!-- Global vendors are counted separately because they appear in every state total. -->
           <div class="note">Totals include {{ vendorStore.stateVendorCount("Global") }} vendors listed as "Global"</div>
         </template>
       </div>
@@ -160,7 +160,7 @@ const selectRegion = (regionName: string) => {
   background-color: #452145;
   grid-template-columns: 1fr;
 }
-.legend-region {
+.legend-state {
   border: 0;
   border-radius: 6px;
   padding: 4px 6px;
@@ -174,7 +174,7 @@ const selectRegion = (regionName: string) => {
   font: inherit;
   cursor: pointer;
 }
-.legend-region:hover {
+.legend-state:hover {
   background-color: #eeeeee;
 }
 .legend-density {
@@ -183,13 +183,14 @@ const selectRegion = (regionName: string) => {
   align-items: center;
   margin: 6px 0px;
 }
-.legend-region_color {
+.legend-state-color,
+.legend-density-color {
   width: 30px;
   height: 15px;
   background-color: #7b7b7b;
   opacity: 0.4;
 }
-.legend-region_name {
+.legend-state-name {
   display: inline-flex;
   width: 70px;
   justify-content: flex-start;
@@ -201,7 +202,7 @@ const selectRegion = (regionName: string) => {
 .density-label {
   text-align: left;
 }
-.country-vendor-count {
+.district-vendor-count {
   text-align: left;
 }
 .note {

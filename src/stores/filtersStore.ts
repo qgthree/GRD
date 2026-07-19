@@ -9,8 +9,8 @@ export const useFiltersStore = defineStore('filterStore', {
   state: () => ({
     status: 'hidden' as FilterStatus,
     locationMode: 'state' as LocationFilterMode,
-    collapsedCountryRegions: [] as string[],
-    countryRegionsHaveInitialized: false,
+    collapsedDistrictStates: [] as string[],
+    districtStatesHaveInitialized: false,
     filterHistoryEntryPrepared: false
   }),
   actions: {
@@ -33,19 +33,19 @@ export const useFiltersStore = defineStore('filterStore', {
     setLocationMode(mode: LocationFilterMode) {
       this.locationMode = mode;
     },
-    initializeCollapsedCountryRegions(regions: string[]) {
-      if (this.countryRegionsHaveInitialized) return;
+    initializeCollapsedDistrictStates(states: string[]) {
+      if (this.districtStatesHaveInitialized) return;
 
-      this.collapsedCountryRegions = regions;
-      this.countryRegionsHaveInitialized = true;
+      this.collapsedDistrictStates = states;
+      this.districtStatesHaveInitialized = true;
     },
-    toggleCountryRegion(region: string) {
-      this.collapsedCountryRegions = this.collapsedCountryRegions.includes(region)
-        ? this.collapsedCountryRegions.filter((collapsedRegion) => collapsedRegion !== region)
-        : [...this.collapsedCountryRegions, region];
+    toggleDistrictState(state: string) {
+      this.collapsedDistrictStates = this.collapsedDistrictStates.includes(state)
+        ? this.collapsedDistrictStates.filter((collapsedState) => collapsedState !== state)
+        : [...this.collapsedDistrictStates, state];
     },
-    isCountryRegionOpen(region: string) {
-      return !this.collapsedCountryRegions.includes(region);
+    isDistrictStateOpen(state: string) {
+      return !this.collapsedDistrictStates.includes(state);
     }
   }
 });

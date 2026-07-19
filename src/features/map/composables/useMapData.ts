@@ -1,15 +1,15 @@
 import { ref } from 'vue'
 import {
-  getChildBoundariesForCountries,
-  getChildBoundariesForRegions,
-  getParentBoundaries
+  getDistrictBoundariesForGeoids,
+  getDistrictBoundariesForStates,
+  getStateBoundaries
 } from '@/features/map/api/mapDataSource'
-import type { CountryFeature, MapFeatureCollection, RegionFeature } from '@/features/map/types'
+import type { DistrictFeature, MapFeatureCollection, StateFeature } from '@/features/map/types'
 
 // Owns the loading lifecycle for map data so components do not care whether
 // data comes from local public files today or backend requests later.
 export const useMapData = () => {
-  const parentBoundaries = ref<MapFeatureCollection<RegionFeature> | null>(null)
+  const stateBoundaries = ref<MapFeatureCollection<StateFeature> | null>(null)
   const error = ref<unknown>(null)
   const isLoading = ref(false)
 
@@ -29,24 +29,24 @@ export const useMapData = () => {
     }
   }
 
-  const loadParentBoundaries = async () => {
-    parentBoundaries.value = await load(getParentBoundaries)
+  const loadStateBoundaries = async () => {
+    stateBoundaries.value = await load(getStateBoundaries)
   }
 
-  const loadChildBoundariesForRegions = async (regions: string[]) => {
-    return load(() => getChildBoundariesForRegions(regions))
+  const loadDistrictBoundariesForStates = async (states: string[]) => {
+    return load(() => getDistrictBoundariesForStates(states))
   }
 
-  const loadChildBoundariesForCountries = async (countryCodes: string[]) => {
-    return load<MapFeatureCollection<CountryFeature>>(() => getChildBoundariesForCountries(countryCodes))
+  const loadDistrictBoundariesForGeoids = async (geoids: string[]) => {
+    return load<MapFeatureCollection<DistrictFeature>>(() => getDistrictBoundariesForGeoids(geoids))
   }
 
   return {
-    parentBoundaries,
+    stateBoundaries,
     error,
     isLoading,
-    loadParentBoundaries,
-    loadChildBoundariesForRegions,
-    loadChildBoundariesForCountries
+    loadStateBoundaries,
+    loadDistrictBoundariesForStates,
+    loadDistrictBoundariesForGeoids
   }
 }

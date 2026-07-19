@@ -1,12 +1,12 @@
-export interface Region {
+export interface State {
   name: string;
   code: string;
 }
 
-export interface Country {
+export interface District {
   name: string;
-  ISO3: string;
-  region: string;
+  geoid: string;
+  state: string;
   type: string;
   vendorCount?: number;
 }

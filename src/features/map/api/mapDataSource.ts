@@ -1,7 +1,7 @@
 import type {
-  CountryFeature,
+  DistrictFeature,
   MapFeatureCollection,
-  RegionFeature
+  StateFeature
 } from '@/features/map/types'
 import { queryTigerGeoJson, tigerWebLayers, type TigerFeature } from '@/features/locations/api/tigerWeb'
 import type { Geometry, Position } from 'geojson'
@@ -25,9 +25,9 @@ interface TigerCongressionalDistrictProperties {
   CENTLON: string
 }
 
-let parentBoundaryRequest: Promise<MapFeatureCollection<RegionFeature>> | null = null
-const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<CountryFeature>>>()
-const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v4:maxOffset0.01:antimeridian'
+let stateBoundaryRequest: Promise<MapFeatureCollection<StateFeature>> | null = null
+const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<DistrictFeature>>>()
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v5:maxOffset0.01:stateSchema:antimeridian'
 
 const coordinate = (value: string) => Number.parseFloat(value)
 
@@ -103,34 +103,34 @@ const normalizeGeometryAcrossAntimeridian = (geometry: Geometry, centroidLongitu
   } as Geometry
 }
 
-const normalizeStateFeature = (feature: TigerFeature<TigerStateProperties>): RegionFeature => ({
+const normalizeStateFeature = (feature: TigerFeature<TigerStateProperties>): StateFeature => ({
   ...feature,
   geometry: normalizeGeometryAcrossAntimeridian(feature.geometry, coordinate(feature.properties.CENTLON)),
   properties: {
-    BHA_REGION: feature.properties.NAME || feature.properties.BASENAME,
-    STATE: feature.properties.STATE,
-    STUSAB: feature.properties.STUSAB,
-    LAT_CENT: coordinate(feature.properties.CENTLAT),
-    LONG_CENT: coordinate(feature.properties.CENTLON)
+    name: feature.properties.NAME || feature.properties.BASENAME,
+    stateCode: feature.properties.STATE,
+    stateAbbreviation: feature.properties.STUSAB,
+    latCent: coordinate(feature.properties.CENTLAT),
+    longCent: coordinate(feature.properties.CENTLON)
   }
 })
 
 const normalizeCongressionalDistrictFeature = (
   feature: TigerFeature<TigerCongressionalDistrictProperties>,
   stateNamesByCode: Map<string, string>
-): CountryFeature => {
+): DistrictFeature => {
   const stateName = stateNamesByCode.get(feature.properties.STATE) ?? feature.properties.STATE
 
   return {
     ...feature,
     geometry: normalizeGeometryAcrossAntimeridian(feature.geometry, coordinate(feature.properties.CENTLON)),
     properties: {
-      BHA_Reg: stateName,
-      ISO3: feature.properties.GEOID,
-      USG_Name: feature.properties.NAME || `${stateName} Congressional District ${feature.properties.CD119}`,
-      LAT_CENT: coordinate(feature.properties.CENTLAT),
-      LONG_CENT: coordinate(feature.properties.CENTLON),
-      CD119: feature.properties.CD119
+      stateName,
+      geoid: feature.properties.GEOID,
+      name: feature.properties.NAME || `${stateName} Congressional District ${feature.properties.CD119}`,
+      latCent: coordinate(feature.properties.CENTLAT),
+      longCent: coordinate(feature.properties.CENTLON),
+      districtCode: feature.properties.CD119
     }
   }
 }
@@ -156,8 +156,8 @@ const writeSessionCache = (key: string, data: unknown) => {
   }
 }
 
-export const getParentBoundaries = async () => {
-  parentBoundaryRequest ??= Promise.resolve(readSessionCache<MapFeatureCollection<RegionFeature>>(parentBoundarySessionCacheKey))
+export const getStateBoundaries = async () => {
+  stateBoundaryRequest ??= Promise.resolve(readSessionCache<MapFeatureCollection<StateFeature>>(parentBoundarySessionCacheKey))
     .then((cachedBoundaries) => {
       if (cachedBoundaries) return cachedBoundaries
 
@@ -171,7 +171,7 @@ export const getParentBoundaries = async () => {
         })
         .then((features) => {
           const sortedFeatures = features.sort((firstFeature, secondFeature) => {
-            return firstFeature.properties.BHA_REGION.localeCompare(secondFeature.properties.BHA_REGION)
+            return firstFeature.properties.name.localeCompare(secondFeature.properties.name)
           })
           const boundaries = { features: sortedFeatures }
 
@@ -180,19 +180,19 @@ export const getParentBoundaries = async () => {
         })
     })
     .catch((caughtError) => {
-      parentBoundaryRequest = null
+      stateBoundaryRequest = null
       throw caughtError
     })
 
-  return parentBoundaryRequest
+  return stateBoundaryRequest
 }
 
 const getStateNamesByCode = async () => {
-  const states = await getParentBoundaries()
+  const states = await getStateBoundaries()
 
   return new Map(states.features.map((feature) => [
-    feature.properties.STATE,
-    feature.properties.BHA_REGION
+    feature.properties.stateCode,
+    feature.properties.name
   ]))
 }
 
@@ -217,15 +217,15 @@ const getCongressionalDistrictBoundariesForStateCode = async (stateCode: string)
     )
   }
 
-  return congressionalDistrictBoundaryRequests.get(stateCode) as Promise<MapFeatureCollection<CountryFeature>>
+  return congressionalDistrictBoundaryRequests.get(stateCode) as Promise<MapFeatureCollection<DistrictFeature>>
 }
 
-export const getChildBoundariesForRegions = async (regions: string[]) => {
-  const uniqueRegions = [...new Set(regions.filter(Boolean))]
-  const parentBoundaries = await getParentBoundaries()
-  const stateCodes = parentBoundaries.features
-    .filter((feature) => uniqueRegions.includes(feature.properties.BHA_REGION))
-    .map((feature) => feature.properties.STATE)
+export const getDistrictBoundariesForStates = async (states: string[]) => {
+  const uniqueStates = [...new Set(states.filter(Boolean))]
+  const stateBoundaries = await getStateBoundaries()
+  const stateCodes = stateBoundaries.features
+    .filter((feature) => uniqueStates.includes(feature.properties.name))
+    .map((feature) => feature.properties.stateCode)
   const districtCollections = await Promise.all(stateCodes.map(getCongressionalDistrictBoundariesForStateCode))
 
   return {
@@ -233,14 +233,14 @@ export const getChildBoundariesForRegions = async (regions: string[]) => {
   }
 }
 
-export const getChildBoundariesForCountries = async (countryCodes: string[]) => {
-  const requestedCountryCodes = new Set(countryCodes)
-  const stateCodes = [...new Set(countryCodes.map((countryCode) => countryCode.slice(0, 2)))]
+export const getDistrictBoundariesForGeoids = async (geoids: string[]) => {
+  const requestedGeoids = new Set(geoids)
+  const stateCodes = [...new Set(geoids.map((geoid) => geoid.slice(0, 2)))]
   const districtCollections = await Promise.all(stateCodes.map(getCongressionalDistrictBoundariesForStateCode))
 
   return {
     features: districtCollections
       .flatMap((collection) => collection.features)
-      .filter((feature) => requestedCountryCodes.has(feature.properties.ISO3))
+      .filter((feature) => requestedGeoids.has(feature.properties.geoid))
   }
 }

@@ -12,10 +12,10 @@ import close from "@/assets/images/close.svg";
 // and expanded/collapsed display state.
 const vendorStore = useVendorStore();
 const { filteredVendors } = storeToRefs(vendorStore);
-const districts = useLocationStore().countries;
+const districts = useLocationStore().districts;
 
 const getDistrictName = (districtId: string) => {
-  return districts.find((district) => district.ISO3 === districtId)?.name ?? districtId;
+  return districts.find((district) => district.geoid === districtId)?.name ?? districtId;
 }
 
 // This model is local to the input below and narrows the already route-filtered
