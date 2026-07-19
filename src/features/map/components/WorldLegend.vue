@@ -44,7 +44,7 @@ const selectedState = computed(() => {
 const isStateDensityView = computed(() => {
   const selection = activeSelection.value;
 
-  return selection.type === 'none' || selection.type === 'state-list';
+  return selection.type === 'none' || selection.type === 'state-list' || selection.type === 'district-list';
 });
 const selectedDistrict = computed(() => {
   const selection = activeSelection.value;

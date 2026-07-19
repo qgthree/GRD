@@ -67,6 +67,11 @@ const setBoundaryLayer = (layer: L.GeoJSON) => {
   boundaryLayerGroup.addLayer(layer);
 }
 
+const setBoundaryLayers = (layers: L.GeoJSON[]) => {
+  clearBoundaryLayers();
+  layers.forEach((layer) => boundaryLayerGroup.addLayer(layer));
+}
+
 const fitBoundaryLayer = (layer: L.GeoJSON) => {
   const bounds = layer.getBounds();
 
@@ -225,28 +230,25 @@ const renderMapSelection = async (query: LocationQuery, moveViewport = true) => 
   }
 
   if (selection.type === 'district-list') {
-    // Multiple selected district boundaries show district shapes. If they are
-    // all in one state, zoom to that state; otherwise use the broad view.
+    // Multiple selected districts keep the regular state heatmap as context,
+    // then draw the selected district boundaries above it as the highlight.
     const districtBoundaries = await loadDistrictBoundariesForGeoids(selection.ids)
     if (!isCurrentSelection(currentSelectionKey)) return
 
     const selectedDistrictBoundaries = districtBoundaries.features
+    const densityBuckets = createStateDensityBuckets(stateBoundaries.value.features);
+    const stateBoundaryLayer = createStateBoundaries(stateBoundaries.value.features, densityBuckets);
+    const districtBoundaryLayer = createDistrictBoundaries(
+      selectedDistrictBoundaries,
+      [{
+        min: 0,
+        max: Infinity,
+        label: 'Selected districts',
+        fillOpacity: leafSettings.features.mediumOpacity
+      }]
+    );
 
-    const districtBoundaryLayer = createDistrictBoundaries(selectedDistrictBoundaries);
-
-    setBoundaryLayer(districtBoundaryLayer);
-
-    const firstDistrictBoundary = selectedDistrictBoundaries[0];
-    const allDistrictBoundariesShareState = selectedDistrictBoundaries.every((feature) => {
-      return feature.properties.stateName === firstDistrictBoundary?.properties.stateName;
-    })
-
-    if (firstDistrictBoundary && allDistrictBoundariesShareState) {
-      if (moveViewport) {
-        fitBoundaryLayer(districtBoundaryLayer);
-      }
-      return;
-    }
+    setBoundaryLayers([stateBoundaryLayer, districtBoundaryLayer]);
 
     if (moveViewport) {
       setDefaultViewport(map, leafSettings);
