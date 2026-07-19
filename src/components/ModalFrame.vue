@@ -28,9 +28,8 @@
 
         <slot name="header" :close="() => emit('closeModal')" />
 
-        <div class="modal-layout" :class="`is-${backgroundPlacement}`">
+        <div v-if="modalImage" class="modal-layout" :class="`is-${backgroundPlacement}`">
           <div
-            v-if="modalImage"
             class="modal-media"
             role="presentation"
             :style="modalImageStyles"
@@ -39,6 +38,10 @@
           <div class="modal-content">
             <slot />
           </div>
+        </div>
+
+        <div v-else class="modal-content">
+          <slot />
         </div>
       </div>
     </div>
@@ -121,6 +124,8 @@ onBeforeUnmount(deactivate)
     width: min(var(--modal-max-width), 100%);
     min-width: min(360px, 100%);
     max-height: min(calc(100dvh - (var(--modal-block-space) * 2)), 720px);
+    display: flex;
+    flex-direction: column;
     background: #fff;
     color: #000;
     border-radius: 15px;
@@ -165,7 +170,8 @@ onBeforeUnmount(deactivate)
     }
 
     .modal-layout {
-      max-height: inherit;
+      flex: 1 1 auto;
+      min-height: 0;
       display: flex;
       flex-direction: column;
 
@@ -198,12 +204,13 @@ onBeforeUnmount(deactivate)
         min-height: auto;
       }
 
-      .modal-content {
-        flex: 1 1 auto;
-        min-width: 0;
-        min-height: 0;
-        overflow: auto;
-      }
+    }
+
+    .modal-content {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
     }
   }
 }
