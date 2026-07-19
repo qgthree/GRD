@@ -83,81 +83,76 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="filter-panel">
-    <div id="locationTypeSelector">
-      <button
-        class="selectorLeft"
-        :class="{ active: filtersStore.locationMode === 'region' }"
-        type="button"
-        @click="setLocationMode('region')">
-        Filter By Region
-      </button>
-      <div class="selectorCenter">
-        <label class="switch">
-          <input
-            type="checkbox"
-            :checked="filtersStore.locationMode === 'country'"
-            @change="setLocationMode(filtersStore.locationMode === 'region' ? 'country' : 'region')" />
-          <span class="slider"></span>
-        </label>
-      </div>
-      <button
-        class="selectorRight"
-        :class="{ active: filtersStore.locationMode === 'country' }"
-        type="button"
-        @click="setLocationMode('country')">
-        Filter By Country
-      </button>
+  <div id="locationTypeSelector">
+    <button
+      class="selectorLeft"
+      :class="{ active: filtersStore.locationMode === 'region' }"
+      type="button"
+      @click="setLocationMode('region')">
+      Filter By Region
+    </button>
+    <div class="selectorCenter">
+      <label class="switch">
+        <input
+          type="checkbox"
+          :checked="filtersStore.locationMode === 'country'"
+          @change="setLocationMode(filtersStore.locationMode === 'region' ? 'country' : 'region')" />
+        <span class="slider"></span>
+      </label>
     </div>
+    <button
+      class="selectorRight"
+      :class="{ active: filtersStore.locationMode === 'country' }"
+      type="button"
+      @click="setLocationMode('country')">
+      Filter By Country
+    </button>
+  </div>
 
-    <div v-if="filtersStore.locationMode === 'region'" class="region-option-group">
-      <div class="region-options">
-        <label class="filter-option" v-for="region in regions" :key="region">
-          <input
-            type="checkbox"
-            :checked="selectedRegions.includes(region)"
-            @change="toggleQueryValue('region', region)" />
-          <span>{{ region }}</span>
-        </label>
-      </div>
+  <div v-if="filtersStore.locationMode === 'region'" class="region-option-group">
+    <div class="region-options">
+      <label class="filter-option" v-for="region in regions" :key="region">
+        <input
+          type="checkbox"
+          :checked="selectedRegions.includes(region)"
+          @change="toggleQueryValue('region', region)" />
+        <span>{{ region }}</span>
+      </label>
     </div>
+  </div>
 
-    <div v-else class="country-groups">
-      <section class="country-region-group" v-for="group in countryGroups" :key="group.region">
-        <h3>
-          <button
-            type="button"
-            :aria-expanded="filtersStore.isCountryRegionOpen(group.region)"
-            @click="filtersStore.toggleCountryRegion(group.region)">
-            <span class="country-region-title">
-              <span>{{ group.region }}</span>
-              <span v-if="selectedCountryCountForRegion(group.countries)" class="selected-count">
-                {{ selectedCountryCountForRegion(group.countries) }}
-              </span>
+  <div v-else class="country-groups">
+    <section class="country-region-group" v-for="group in countryGroups" :key="group.region">
+      <h3>
+        <button
+          type="button"
+          :aria-expanded="filtersStore.isCountryRegionOpen(group.region)"
+          @click="filtersStore.toggleCountryRegion(group.region)">
+          <span class="country-region-title">
+            <span>{{ group.region }}</span>
+            <span v-if="selectedCountryCountForRegion(group.countries)" class="selected-count">
+              {{ selectedCountryCountForRegion(group.countries) }}
             </span>
-            <span aria-hidden="true">{{ filtersStore.isCountryRegionOpen(group.region) ? '−' : '+' }}</span>
-          </button>
-        </h3>
-        <CollapseTransition>
-          <div v-show="filtersStore.isCountryRegionOpen(group.region)" class="country-region-body filter-options">
-            <label class="filter-option" v-for="country in group.countries" :key="`${country.ISO3}-${country.name}`">
-              <input
-                type="checkbox"
-                :checked="selectedCountries.includes(country.ISO3)"
-                @change="toggleQueryValue('country', country.ISO3)" />
-              <span>{{ country.name }}</span>
-            </label>
-          </div>
-        </CollapseTransition>
-      </section>
-    </div>
+          </span>
+          <span aria-hidden="true">{{ filtersStore.isCountryRegionOpen(group.region) ? '−' : '+' }}</span>
+        </button>
+      </h3>
+      <CollapseTransition>
+        <div v-show="filtersStore.isCountryRegionOpen(group.region)" class="country-region-body filter-options">
+          <label class="filter-option" v-for="country in group.countries" :key="`${country.ISO3}-${country.name}`">
+            <input
+              type="checkbox"
+              :checked="selectedCountries.includes(country.ISO3)"
+              @change="toggleQueryValue('country', country.ISO3)" />
+            <span>{{ country.name }}</span>
+          </label>
+        </div>
+      </CollapseTransition>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.filter-panel {
-  padding-right: 10px;
-}
 #locationTypeSelector {
   position: relative;
   display: grid;
@@ -256,7 +251,11 @@ onMounted(() => {
   grid-template-columns: auto 1fr;
   align-items: start;
   gap: 9px;
+  text-align: left;
   line-height: 1.2;
   cursor: pointer;
+}
+.filter-option span {
+  text-align: left;
 }
 </style>

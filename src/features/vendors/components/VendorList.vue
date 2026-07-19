@@ -64,8 +64,8 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
 </script>
 
 <template>
-  <ResizeTransition id="vlist">
-    <div class="vendor-list-content">
+  <div id="vlist">
+    <ResizeTransition>
       <div class="component_header">
         <div class="header-left">{{ filteredVendors.length }} Vendor<span v-if="filteredVendors.length !== 1">s</span></div>
         <div class="header-right">
@@ -126,8 +126,8 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
           </transition-group>
         </div>
       </div>
-    </div>
-  </ResizeTransition>
+    </ResizeTransition>
+  </div>
 </template>
 
 <style scoped>
@@ -145,9 +145,6 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
     -moz-box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
     box-shadow: 0px 3px 17px -10px rgba(0,0,0,0.75);
     overflow: hidden;
-  }
-  .vendor-list-content {
-    display: grid;
   }
   .component_body {
     max-height: calc(100vh - 279.5px);

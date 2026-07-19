@@ -25,7 +25,6 @@ import { useFiltersStore } from '@/stores/filtersStore';
   width: 100%;
   text-align: left;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
 }
 .filterType {
   display: inline-flex;

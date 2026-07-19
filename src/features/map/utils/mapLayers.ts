@@ -65,6 +65,7 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
   }
 
   return L.geoJSON(options.features, {
+    interactive: isInteractive,
     style: (feature) => {
       const typedFeature = feature as TFeature
       const boundaryStyle = options.getBoundaryStyle(options.getStyleKey(typedFeature)) ?? fallbackBoundaryStyle

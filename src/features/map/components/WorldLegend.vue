@@ -37,6 +37,19 @@ const selectedRegion = computed(() => {
 
   return leafSettings.region.find((region) => region.name === selection.id);
 });
+const selectedCountry = computed(() => {
+  const selection = activeSelection.value;
+
+  if (selection.type !== 'child') return;
+
+  return locationStore.countries.find((country) => country.ISO3 === selection.id);
+});
+const legendTitle = computed(() => {
+  if (selectedCountry.value) return selectedCountry.value.name;
+  if (selectedRegion.value) return 'Vendor Presence';
+
+  return 'Regions';
+});
 const densityBuckets = computed(() => {
   if (!selectedRegion.value) return [];
 
@@ -69,13 +82,17 @@ const selectRegion = (regionName: string) => {
   <div class="legend">
     <div class="component_header">
       <div>
-        {{ selectedRegion ? 'Vendor Presence' : 'Regions' }}
+        {{ legendTitle }}
         <span v-if="route.query.services" style="font-style: italic;"> (filtered)</span>
       </div>
     </div>
     <ResizeTransition>
       <div class="component_body">
-        <div v-if="selectedRegion">
+        <div v-if="selectedCountry" class="country-vendor-count">
+          {{ vendorStore.countryVendorCount(selectedCountry.ISO3) ?? 0 }} vendors
+        </div>
+
+        <div v-else-if="selectedRegion">
           <div class="legend-density" v-for="bucket in densityLegendBuckets" :key="bucket.label">
             <div class="color_container">
               <div
@@ -177,6 +194,9 @@ const selectRegion = (regionName: string) => {
   justify-content: flex-end;
 }
 .density-label {
+  text-align: left;
+}
+.country-vendor-count {
   text-align: left;
 }
 .note {

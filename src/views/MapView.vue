@@ -5,18 +5,14 @@ import Filters from '@/features/filters/components/FiltersModal.vue'
 import WorldLegend from "@/features/map/components/WorldLegend.vue";
 import VendorList from '@/features/vendors/components/VendorList.vue';
 import { useVendorStore } from '@/stores/vendorStore';
-import { useFiltersStore } from '@/stores/filtersStore';
 import { computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import spinner from "@/assets/images/infinite-spinner.svg";
 
 const route = useRoute();
 const vendorStore = useVendorStore();
-const filtersStore = useFiltersStore();
 const isVendorDataReady = computed(() => Boolean(vendorStore.vendors.length));
-// Region views use the legend for region colors or country density. Country
-// detail views hide it because the map is focused on one selected boundary.
-const shouldShowLegend = computed(() => !route.query.country && isVendorDataReady.value);
+const shouldShowLegend = computed(() => isVendorDataReady.value);
 
 const updateRouteData = async (query: typeof route.query) => {
   await vendorStore.updateVendors([query]);
@@ -36,9 +32,7 @@ watch(() => route.query, (newQuery) => {
 <template>
   <div id="mapview">
     <Nav />
-    <Transition name="fade">
-      <Filters v-if="filtersStore.status !== 'hidden'" />
-    </Transition>
+    <Filters />
     <Transition name="slide-fade-left">
       <VendorList v-if="vendorStore.show && isVendorDataReady"/>
     </Transition>
