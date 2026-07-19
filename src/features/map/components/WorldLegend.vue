@@ -53,8 +53,18 @@ const selectedDistrict = computed(() => {
 
   return locationStore.districts.find((district) => district.geoid === selection.id);
 });
+const formatDistrictCode = (districtCode: string) => {
+  const districtNumber = Number(districtCode)
+
+  return districtNumber > 0 ? String(districtNumber) : 'AL'
+}
+const selectedDistrictLabel = computed(() => {
+  if (!selectedDistrict.value) return
+
+  return `${selectedDistrict.value.stateAbbreviation}-${formatDistrictCode(selectedDistrict.value.districtCode)}`
+})
 const legendTitle = computed(() => {
-  if (selectedDistrict.value) return selectedDistrict.value.name;
+  if (selectedDistrictLabel.value) return selectedDistrictLabel.value;
   if (selectedState.value || isStateDensityView.value) return 'Vendor Presence';
 
   return 'States';
