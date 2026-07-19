@@ -107,16 +107,14 @@ onMounted(() => {
     </button>
   </div>
 
-  <div v-if="filtersStore.locationMode === 'state'" class="region-option-group">
-    <div class="region-options">
-      <label class="filter-option" v-for="region in regions" :key="region">
-        <input
-          type="checkbox"
-          :checked="selectedStates.includes(region)"
-          @change="toggleQueryValue('state', region)" />
-        <span>{{ region }}</span>
-      </label>
-    </div>
+  <div v-if="filtersStore.locationMode === 'state'" class="state-options">
+    <label class="filter-option" v-for="region in regions" :key="region">
+      <input
+        type="checkbox"
+        :checked="selectedStates.includes(region)"
+        @change="toggleQueryValue('state', region)" />
+      <span>{{ region }}</span>
+    </label>
   </div>
 
   <div v-else class="country-groups">
@@ -183,12 +181,12 @@ onMounted(() => {
   font-weight: 600;
 }
 .country-groups,
-.region-options {
+.state-options {
   display: grid;
   gap: 12px;
 }
 .country-region-group,
-.region-option-group {
+.state-options {
   background-color: #f4f4f5;
   border-radius: 10px;
   color: #000;
@@ -196,7 +194,7 @@ onMounted(() => {
 .country-region-group {
   overflow: hidden;
 }
-.region-option-group {
+.state-options {
   padding: 14px;
 }
 .country-region-group h3 {
