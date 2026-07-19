@@ -16,6 +16,8 @@ interface BoundaryLayerOptions<TFeature extends MapFeature<any>> {
   onFeatureClick?: (feature: TFeature) => void
 }
 
+type BoundaryGeoJsonOptions<TFeature extends MapFeature<any>> = L.GeoJSONOptions<TFeature['properties']> & L.PolylineOptions
+
 const fallbackBoundaryStyle: BoundaryStyleSetting = {
   name: '',
   color: heatmapBoundaryColor,
@@ -65,8 +67,9 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
     return options.getFillOpacity?.(feature) ?? options.settings.features.lightOpacity
   }
 
-  return L.geoJSON(options.features, {
+  const layerOptions: BoundaryGeoJsonOptions<TFeature> = {
     interactive: isInteractive,
+    smoothFactor: 0,
     style: (feature) => {
       const typedFeature = feature as TFeature
       const boundaryStyle = options.getBoundaryStyle(options.getStyleKey(typedFeature)) ?? fallbackBoundaryStyle
@@ -135,5 +138,7 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
         options.onFeatureClick?.(typedFeature)
       })
     }
-  })
+  }
+
+  return L.geoJSON(options.features, layerOptions)
 }
