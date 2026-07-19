@@ -26,27 +26,21 @@ const filtersStore = useFiltersStore()
       </div>
     </template>
 
-    <div class="filters-modal">
+    <div class="filter-panel-area">
       <FilterTypeSelector />
-      <div class="filter-panel-area">
-        <ResizeTransition v-if="filtersStore.status === 'location'" :duration="280">
-          <LocationFilterPanel />
-        </ResizeTransition>
-        <ServiceFilterPanel v-else />
-      </div>
+      <ResizeTransition v-if="filtersStore.status === 'location'" :duration="280">
+        <LocationFilterPanel />
+      </ResizeTransition>
+      <ServiceFilterPanel v-else />
     </div>
   </ModalFrame>
 </template>
 
 <style scoped>
-.filters-modal {
-  max-height: calc(100vh - 104px);
+.filter-panel-area {
+  display: grid;
+  gap: 20px;
   width: 100%;
   padding: 30px;
-  background-color: #fff;
-}
-.filter-panel-area {
-  padding: 20px 0px;
-  background-color: #fff;
 }
 </style>

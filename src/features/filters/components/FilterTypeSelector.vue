@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useFiltersStore } from '@/stores/filtersStore';
+
+const filtersStore = useFiltersStore()
 </script>
 
 <template>
@@ -7,14 +9,14 @@ import { useFiltersStore } from '@/stores/filtersStore';
   <div id="filterSelector">
     <div
       class="filterType"
-      :class="{ active: useFiltersStore().status === 'location' }"
-      @click="useFiltersStore().toggleFiltersView('location')">
+      :class="{ active: filtersStore.status === 'location' }"
+      @click="filtersStore.toggleFiltersView('location')">
       Locations
     </div>
     <div
       class="filterType"
-      :class="{ active: useFiltersStore().status === 'sector' }"
-      @click="useFiltersStore().toggleFiltersView('sector')">
+      :class="{ active: filtersStore.status === 'sector' }"
+      @click="filtersStore.toggleFiltersView('sector')">
       Services
     </div>
   </div>
