@@ -26,6 +26,7 @@ interface TigerCongressionalDistrictProperties {
 
 let parentBoundaryRequest: Promise<MapFeatureCollection<RegionFeature>> | null = null
 const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<CountryFeature>>>()
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v1:maxOffset0.002'
 
 const coordinate = (value: string) => Number.parseFloat(value)
 
@@ -59,17 +60,51 @@ const normalizeCongressionalDistrictFeature = (
   }
 }
 
+const readSessionCache = <TData>(key: string) => {
+  try {
+    const cachedData = window.sessionStorage.getItem(key)
+
+    return cachedData ? JSON.parse(cachedData) as TData : null
+  }
+  catch {
+    return null
+  }
+}
+
+const writeSessionCache = (key: string, data: unknown) => {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(data))
+  }
+  catch {
+    // Cache writes are a performance optimization. Private browsing or storage
+    // quota limits should not block the map from rendering.
+  }
+}
+
 export const getParentBoundaries = async () => {
-  parentBoundaryRequest ??= queryTigerGeoJson<TigerStateProperties>(tigerWebLayers.states, {
-    outFields: 'STATE,NAME,BASENAME,STUSAB,CENTLAT,CENTLON'
-  })
-    .then((collection) => ({
-      features: collection.features
-        .map(normalizeStateFeature)
-        .sort((firstFeature, secondFeature) => {
-          return firstFeature.properties.BHA_REGION.localeCompare(secondFeature.properties.BHA_REGION)
+  parentBoundaryRequest ??= Promise.resolve(readSessionCache<MapFeatureCollection<RegionFeature>>(parentBoundarySessionCacheKey))
+    .then((cachedBoundaries) => {
+      if (cachedBoundaries) return cachedBoundaries
+
+      return queryTigerGeoJson<TigerStateProperties>(tigerWebLayers.states, {
+        outFields: 'STATE,NAME,BASENAME,STUSAB,CENTLAT,CENTLON',
+        maxAllowableOffset: '0.002',
+        geometryPrecision: '5'
+      })
+        .then((collection) => {
+          const boundaries = {
+            features: collection.features
+              .map(normalizeStateFeature)
+              .sort((firstFeature, secondFeature) => {
+                return firstFeature.properties.BHA_REGION.localeCompare(secondFeature.properties.BHA_REGION)
+              })
+          }
+
+          writeSessionCache(parentBoundarySessionCacheKey, boundaries)
+
+          return boundaries
         })
-    }))
+    })
     .catch((caughtError) => {
       parentBoundaryRequest = null
       throw caughtError
