@@ -26,7 +26,7 @@ interface TigerCongressionalDistrictProperties {
 
 let parentBoundaryRequest: Promise<MapFeatureCollection<RegionFeature>> | null = null
 const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<CountryFeature>>>()
-const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v1:maxOffset0.002'
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v1:maxOffset0.0005'
 
 const coordinate = (value: string) => Number.parseFloat(value)
 
@@ -88,7 +88,7 @@ export const getParentBoundaries = async () => {
 
       return queryTigerGeoJson<TigerStateProperties>(tigerWebLayers.states, {
         outFields: 'STATE,NAME,BASENAME,STUSAB,CENTLAT,CENTLON',
-        maxAllowableOffset: '0.002',
+        maxAllowableOffset: '0.0005',
         geometryPrecision: '5'
       })
         .then((collection) => {
