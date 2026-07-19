@@ -2,6 +2,12 @@ import L from 'leaflet'
 import type { BoundaryStyleSetting, DistrictFeature, LeafSettings } from '@/features/map/types'
 
 export const heatmapBoundaryColor = '#651D32'
+export const alaskaStateName = 'Alaska'
+
+const alaskaViewport = {
+  center: [64.2, -152.2],
+  zoom: 4
+}
 
 // Leaflet expects a tuple-like LatLngExpression, while the settings store keeps
 // centers as simple number arrays for easy data entry.
@@ -25,18 +31,10 @@ export const setDefaultViewport = (map: L.Map, settings: LeafSettings) => {
   map.setView(asMapCenter(settings.mapCenter), settings.mapZoom)
 }
 
-// Unknown boundary styles fall back to the default view instead of crashing the map.
-export const setBoundaryViewport = (
-  map: L.Map,
-  boundaryStyle: BoundaryStyleSetting | undefined,
-  settings: LeafSettings
-) => {
-  if (!boundaryStyle) {
-    setDefaultViewport(map, settings)
-    return
-  }
-
-  map.setView(asMapCenter(boundaryStyle.center), boundaryStyle.zoom)
+// Alaska crosses the antimeridian, so bounds fitting can pick an awkward world
+// view. Use one stable state viewport whenever Alaska is the selected target.
+export const setAlaskaViewport = (map: L.Map) => {
+  map.setView(asMapCenter(alaskaViewport.center), alaskaViewport.zoom)
 }
 
 // Single-feature selections zoom to the selected layer bounds with a small

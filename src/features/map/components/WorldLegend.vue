@@ -1,104 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import ResizeTransition from '@/components/ResizeTransition.vue';
-import { useMapSettingsStore } from "@/stores/mapSettingsStore";
-import { useVendorStore } from '@/stores/vendorStore';
-import { useLocationStore } from '@/stores/locationStore';
-import { useRoute, useRouter } from "vue-router";
-import { getBoundarySelection, mapBoundaryQueryKeys } from '@/features/map/utils/mapQuery';
-import { findBoundaryStyle, heatmapBoundaryColor } from '@/features/map/utils/mapViewport';
-import { createVendorDensityBuckets } from '@/features/map/utils/vendorDensity';
+import { useWorldLegend } from '@/features/map/composables/useWorldLegend';
 
-const { leafSettings } = useMapSettingsStore();
-const vendorStore = useVendorStore();
-const locationStore = useLocationStore();
-const route = useRoute();
-const router = useRouter();
-
-const activeSelection = computed(() => getBoundarySelection(route.query, mapBoundaryQueryKeys));
-const stateStyles = computed(() => {
-  return locationStore.states.map((state) => findBoundaryStyle(leafSettings.boundaryStyles, state.name));
-});
-const visibleStates = computed(() => {
-  const selection = activeSelection.value;
-
-  if (selection.type === 'state') {
-    return stateStyles.value.filter((state) => state.name === selection.id);
-  }
-
-  if (selection.type === 'state-list') {
-    return stateStyles.value.filter((state) => selection.ids.includes(state.name));
-  }
-
-  return stateStyles.value;
-});
-// A single selected state uses the legend for district-level vendor presence.
-// Empty or multi-state selections keep the broader state density legend.
-const selectedState = computed(() => {
-  const selection = activeSelection.value;
-
-  if (selection.type !== 'state') return;
-
-  return stateStyles.value.find((state) => state.name === selection.id);
-});
-const isStateDensityView = computed(() => {
-  const selection = activeSelection.value;
-
-  return selection.type === 'none' || selection.type === 'state-list' || selection.type === 'district-list';
-});
-const selectedDistrict = computed(() => {
-  const selection = activeSelection.value;
-
-  if (selection.type !== 'district') return;
-
-  return locationStore.districts.find((district) => district.geoid === selection.id);
-});
-const formatDistrictCode = (districtCode: string) => {
-  const districtNumber = Number(districtCode)
-
-  return districtNumber > 0 ? String(districtNumber) : 'At Large'
-}
-const selectedDistrictLabel = computed(() => {
-  if (!selectedDistrict.value) return
-
-  return `${selectedDistrict.value.stateAbbreviation} Congressional District ${formatDistrictCode(selectedDistrict.value.districtCode)}`
-})
-const legendTitle = computed(() => {
-  if (selectedDistrictLabel.value) return selectedDistrictLabel.value;
-  if (selectedState.value || isStateDensityView.value) return 'Vendor Presence';
-
-  return 'States';
-});
-const densityBuckets = computed(() => {
-  if (isStateDensityView.value) {
-    const stateCounts = visibleStates.value.map((state) => vendorStore.stateVendorCount(state.name));
-
-    return createVendorDensityBuckets(stateCounts);
-  }
-
-  if (!selectedState.value) return [];
-
-  const districtCounts = locationStore.districts
-    .filter((district) => district.state === selectedState.value?.name)
-    .map((district) => vendorStore.districtVendorCount(district.geoid) ?? 0);
-
-  return createVendorDensityBuckets(districtCounts);
-});
-// The map helper builds buckets light-to-dark; the legend reads better with the
-// highest vendor presence first.
-const densityLegendBuckets = computed(() => [...densityBuckets.value].reverse());
-const densityLegendColor = computed(() => selectedState.value?.color ?? heatmapBoundaryColor);
-
-// Legend state clicks use the same URL state as map clicks and filters.
-const selectState = (stateName: string) => {
-  void router.push({
-    query: {
-      ...route.query,
-      state: stateName,
-      district: undefined,
-    },
-  });
-};
+const {
+  densityLegendBuckets,
+  densityLegendColor,
+  legendTitle,
+  route,
+  selectState,
+  selectedDistrict,
+  selectedDistrictVendorCount,
+  stateVendorCount,
+  globalVendorCount,
+  visibleStates
+} = useWorldLegend();
 </script>
 
 <template>
@@ -113,7 +28,7 @@ const selectState = (stateName: string) => {
     <ResizeTransition>
       <div class="component_body">
         <div v-if="selectedDistrict" class="district-vendor-count">
-          {{ vendorStore.districtVendorCount(selectedDistrict.geoid) ?? 0 }} vendors
+          {{ selectedDistrictVendorCount }} vendors
         </div>
 
         <div v-else-if="densityLegendBuckets.length">
@@ -139,10 +54,10 @@ const selectState = (stateName: string) => {
           >
             <div class="legend-state-color" :style="{ 'background-color': state.color }"></div>
             <div class="legend-state-name">{{ state.name }}</div>
-            <div class="vendorCount">{{ vendorStore.stateVendorCount(state.name) }} vendors</div>
+            <div class="vendorCount">{{ stateVendorCount(state.name) }} vendors</div>
           </button>
           <!-- Global vendors are counted separately because they appear in every state total. -->
-          <div class="note">Totals include {{ vendorStore.stateVendorCount("Global") }} vendors listed as "Global"</div>
+          <div class="note">Totals include {{ globalVendorCount }} vendors listed as "Global"</div>
         </template>
       </div>
     </ResizeTransition>

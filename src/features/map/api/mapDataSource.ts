@@ -5,7 +5,6 @@ import type {
 } from '@/features/map/types'
 import { getStates } from '@/features/locations/api/locationDataSource'
 import { queryTigerGeoJson, tigerWebLayers, type TigerFeature } from '@/features/locations/api/tigerWeb'
-import type { Geometry, Position } from 'geojson'
 
 interface TigerStateProperties {
   STATE: string
@@ -28,85 +27,16 @@ interface TigerCongressionalDistrictProperties {
 
 let stateBoundaryRequest: Promise<MapFeatureCollection<StateFeature>> | null = null
 const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<DistrictFeature>>>()
-const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v5:maxOffset0.01:stateSchema:antimeridian'
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v7:maxOffset0.01:stateSchema'
 
+// TIGERweb returns numeric attributes as strings; map features keep centroids
+// numeric so Leaflet viewport helpers can use them directly.
 const coordinate = (value: string) => Number.parseFloat(value)
 
-const getLongitudeRange = (coordinates: unknown) => {
-  let minLongitude = Infinity
-  let maxLongitude = -Infinity
-
-  const walk = (value: unknown) => {
-    if (!Array.isArray(value)) return
-
-    if (typeof value[0] === 'number') {
-      const longitude = value[0]
-
-      minLongitude = Math.min(minLongitude, longitude)
-      maxLongitude = Math.max(maxLongitude, longitude)
-      return
-    }
-
-    value.forEach(walk)
-  }
-
-  walk(coordinates)
-
-  return { minLongitude, maxLongitude }
-}
-
-const normalizeCoordinateLongitude = (position: Position, centroidLongitude: number) => {
-  const [longitude, latitude, ...rest] = position
-
-  if (centroidLongitude < 0 && longitude > 0) {
-    return [longitude - 360, latitude, ...rest]
-  }
-
-  if (centroidLongitude > 0 && longitude < 0) {
-    return [longitude + 360, latitude, ...rest]
-  }
-
-  return position
-}
-
-const normalizeCoordinatesAcrossAntimeridian = <TCoordinates>(
-  coordinates: TCoordinates,
-  centroidLongitude: number
-): TCoordinates => {
-  if (!Array.isArray(coordinates)) return coordinates
-
-  if (typeof coordinates[0] === 'number') {
-    return normalizeCoordinateLongitude(coordinates as Position, centroidLongitude) as TCoordinates
-  }
-
-  return coordinates.map((coordinateSet: unknown) => {
-    return normalizeCoordinatesAcrossAntimeridian(coordinateSet, centroidLongitude)
-  }) as TCoordinates
-}
-
-const normalizeGeometryAcrossAntimeridian = (geometry: Geometry, centroidLongitude: number): Geometry => {
-  if (geometry.type === 'GeometryCollection') {
-    return {
-      ...geometry,
-      geometries: geometry.geometries.map((childGeometry) => {
-        return normalizeGeometryAcrossAntimeridian(childGeometry, centroidLongitude)
-      })
-    }
-  }
-
-  const { minLongitude, maxLongitude } = getLongitudeRange(geometry.coordinates)
-
-  if (maxLongitude - minLongitude <= 180) return geometry
-
-  return {
-    ...geometry,
-    coordinates: normalizeCoordinatesAcrossAntimeridian(geometry.coordinates, centroidLongitude)
-  } as Geometry
-}
-
+// Convert TIGERweb state GeoJSON attributes into the app's map-facing state
+// properties.
 const normalizeStateFeature = (feature: TigerFeature<TigerStateProperties>): StateFeature => ({
   ...feature,
-  geometry: normalizeGeometryAcrossAntimeridian(feature.geometry, coordinate(feature.properties.CENTLON)),
   properties: {
     name: feature.properties.NAME || feature.properties.BASENAME,
     stateCode: feature.properties.STATE,
@@ -116,6 +46,8 @@ const normalizeStateFeature = (feature: TigerFeature<TigerStateProperties>): Sta
   }
 })
 
+// Convert TIGERweb congressional district GeoJSON attributes into the app's
+// map-facing district properties, including a readable state name.
 const normalizeCongressionalDistrictFeature = (
   feature: TigerFeature<TigerCongressionalDistrictProperties>,
   stateNamesByCode: Map<string, string>
@@ -124,7 +56,6 @@ const normalizeCongressionalDistrictFeature = (
 
   return {
     ...feature,
-    geometry: normalizeGeometryAcrossAntimeridian(feature.geometry, coordinate(feature.properties.CENTLON)),
     properties: {
       stateName,
       geoid: feature.properties.GEOID,
@@ -136,6 +67,8 @@ const normalizeCongressionalDistrictFeature = (
   }
 }
 
+// Read cached state boundary geometry from sessionStorage. Failures are ignored
+// because cache access is only a performance optimization.
 const readSessionCache = <TData>(key: string) => {
   try {
     const cachedData = window.sessionStorage.getItem(key)
@@ -147,6 +80,8 @@ const readSessionCache = <TData>(key: string) => {
   }
 }
 
+// Store state boundary geometry for this browser session so returning to the
+// country view does not refetch the all-state TIGERweb layer.
 const writeSessionCache = (key: string, data: unknown) => {
   try {
     window.sessionStorage.setItem(key, JSON.stringify(data))
@@ -157,6 +92,8 @@ const writeSessionCache = (key: string, data: unknown) => {
   }
 }
 
+// Fetch all state boundary GeoJSON once, at intentionally low fidelity, then
+// normalize, sort, and session-cache it for country and state-selection views.
 export const getStateBoundaries = async () => {
   stateBoundaryRequest ??= Promise.resolve(readSessionCache<MapFeatureCollection<StateFeature>>(parentBoundarySessionCacheKey))
     .then((cachedBoundaries) => {
@@ -188,6 +125,8 @@ export const getStateBoundaries = async () => {
   return stateBoundaryRequest
 }
 
+// Build a lightweight lookup from Census state code to state name without
+// loading state geometry. District boundary responses only include the code.
 const getStateNamesByCode = async () => {
   const states = await getStates()
 
@@ -197,6 +136,8 @@ const getStateNamesByCode = async () => {
   ]))
 }
 
+// Fetch and memoize congressional district boundary GeoJSON for one state code.
+// District selections are grouped by state so each state layer is requested once.
 const getCongressionalDistrictBoundariesForStateCode = async (stateCode: string) => {
   if (!congressionalDistrictBoundaryRequests.has(stateCode)) {
     congressionalDistrictBoundaryRequests.set(
@@ -221,6 +162,8 @@ const getCongressionalDistrictBoundariesForStateCode = async (stateCode: string)
   return congressionalDistrictBoundaryRequests.get(stateCode) as Promise<MapFeatureCollection<DistrictFeature>>
 }
 
+// Convert selected state names into Census state codes, fetch those states'
+// congressional district boundaries, and return one combined feature collection.
 export const getDistrictBoundariesForStates = async (states: string[]) => {
   const uniqueStates = [...new Set(states.filter(Boolean))]
   const stateBoundaries = await getStateBoundaries()
@@ -234,6 +177,8 @@ export const getDistrictBoundariesForStates = async (states: string[]) => {
   }
 }
 
+// Fetch congressional district boundaries for the states implied by selected
+// district GEOIDs, then return only the requested district features.
 export const getDistrictBoundariesForGeoids = async (geoids: string[]) => {
   const requestedGeoids = new Set(geoids)
   const stateCodes = [...new Set(geoids.map((geoid) => geoid.slice(0, 2)))]

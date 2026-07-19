@@ -9,9 +9,7 @@ interface BoundaryLayerOptions<TFeature extends MapFeature<any>> {
   getLabel: (feature: TFeature) => string
   getDetail?: (feature: TFeature) => string
   getFillOpacity?: (feature: TFeature) => number
-  getHoverGroupKey?: (feature: TFeature) => string
   getBoundaryStyle: (name: string) => BoundaryStyleSetting | undefined
-  map?: L.Map
   interactive?: boolean
   onFeatureClick?: (feature: TFeature) => void
 }
@@ -23,10 +21,6 @@ const fallbackBoundaryStyle: BoundaryStyleSetting = {
   color: heatmapBoundaryColor,
   center: [25, 10],
   zoom: 1
-}
-
-const featureLayer = <TFeature extends MapFeature<any>>(layer: L.Layer) => {
-  return layer as L.Layer & { feature?: TFeature }
 }
 
 const tooltipText = <TFeature extends MapFeature<any>>(
@@ -42,21 +36,6 @@ const tooltipText = <TFeature extends MapFeature<any>>(
   return `<span class="tip-title">${options.getLabel(feature)}</span><br /><span>${detail}</span>`
 }
 
-const setGroupOpacity = <TFeature extends MapFeature<any>>(
-  map: L.Map,
-  groupKey: string,
-  getFillOpacity: (feature: TFeature) => number,
-  getHoverGroupKey: (feature: TFeature) => string
-) => {
-  map.eachLayer((layer) => {
-    const feature = featureLayer<TFeature>(layer).feature
-
-    if (feature && getHoverGroupKey(feature) === groupKey) {
-      ;(layer as L.Path).setStyle({ fillOpacity: getFillOpacity(feature) })
-    }
-  })
-}
-
 export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
   options: BoundaryLayerOptions<TFeature>
 ) => {
@@ -69,6 +48,7 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
 
   const layerOptions: BoundaryGeoJsonOptions<TFeature> = {
     interactive: isInteractive,
+    bubblingMouseEvents: false,
     smoothFactor: 0,
     style: (feature) => {
       const typedFeature = feature as TFeature
@@ -84,57 +64,12 @@ export const createBoundaryLayer = <TFeature extends MapFeature<any>>(
     },
     onEachFeature: (feature, layer) => {
       const typedFeature = feature as TFeature
-      const hoverGroupKey = options.getHoverGroupKey?.(typedFeature)
-
-      layer.bindTooltip(tooltipText(typedFeature, options))
 
       if (!isInteractive) return
 
-      layer.on('mouseover', () => {
-        // Density maps already use fill opacity to communicate data. Do not
-        // overwrite that encoding just to show hover state.
-        if (options.getFillOpacity) return
-
-        if (hoverGroupKey && options.map) {
-          setGroupOpacity<TFeature>(
-            options.map,
-            hoverGroupKey,
-            () => options.settings.features.mediumOpacity,
-            options.getHoverGroupKey
-          )
-          return
-        }
-
-        ;(layer as L.Path).setStyle({ fillOpacity: options.settings.features.heavyOpacity })
-      })
-
-      layer.on('mouseout', () => {
-        if (hoverGroupKey && options.map) {
-          setGroupOpacity<TFeature>(
-            options.map,
-            hoverGroupKey,
-            getRestingFillOpacity,
-            options.getHoverGroupKey
-          )
-          return
-        }
-
-        ;(layer as L.Path).setStyle({ fillOpacity: getRestingFillOpacity(typedFeature) })
-      })
+      layer.bindTooltip(tooltipText(typedFeature, options))
 
       layer.on('click', () => {
-        if (hoverGroupKey && options.map) {
-          setGroupOpacity<TFeature>(
-            options.map,
-            hoverGroupKey,
-            getRestingFillOpacity,
-            options.getHoverGroupKey
-          )
-        }
-        else {
-          ;(layer as L.Path).setStyle({ fillOpacity: getRestingFillOpacity(typedFeature) })
-        }
-
         options.onFeatureClick?.(typedFeature)
       })
     }

@@ -13,6 +13,8 @@ export const useMapData = () => {
   const error = ref<unknown>(null)
   const isLoading = ref(false)
 
+  // Wrap every map-data request with one loading/error lifecycle so callers do
+  // not duplicate that state management.
   const load = async <TResult>(loader: () => Promise<TResult>) => {
     isLoading.value = true
     error.value = null
@@ -29,14 +31,18 @@ export const useMapData = () => {
     }
   }
 
+  // Load and retain state boundaries because they are the base layer for the
+  // country view and the lookup source for state-scoped district requests.
   const loadStateBoundaries = async () => {
     stateBoundaries.value = await load(getStateBoundaries)
   }
 
+  // Fetch all congressional district boundaries inside the provided state names.
   const loadDistrictBoundariesForStates = async (states: string[]) => {
     return load(() => getDistrictBoundariesForStates(states))
   }
 
+  // Fetch only the congressional district boundaries identified by GEOID.
   const loadDistrictBoundariesForGeoids = async (geoids: string[]) => {
     return load<MapFeatureCollection<DistrictFeature>>(() => getDistrictBoundariesForGeoids(geoids))
   }

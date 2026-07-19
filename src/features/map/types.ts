@@ -43,7 +43,6 @@ export interface BoundaryStyleSetting {
 
 export interface MapStyleSettings {
   weight: number
-  heavyOpacity: number
   mediumOpacity: number
   lightOpacity: number
 }

@@ -17,7 +17,6 @@ export const useMapSettingsStore = defineStore('mapSettingsStore', {
             maxZoom: 15,
             features: {
                 weight: 0.8,
-                heavyOpacity: 0.7,
                 mediumOpacity: 0.5,
                 lightOpacity: 0.3
             },
