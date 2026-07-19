@@ -7,18 +7,20 @@ const filtersStore = useFiltersStore()
 <template>
   <!-- Switches between the two filter modes stored in the filters store. -->
   <div id="filterSelector">
-    <div
+    <button
       class="filterType"
       :class="{ active: filtersStore.status === 'location' }"
+      type="button"
       @click="filtersStore.toggleFiltersView('location')">
       Locations
-    </div>
-    <div
+    </button>
+    <button
       class="filterType"
       :class="{ active: filtersStore.status === 'sector' }"
+      type="button"
       @click="filtersStore.toggleFiltersView('sector')">
       Services
-    </div>
+    </button>
   </div>
 </template>
 
@@ -29,8 +31,12 @@ const filtersStore = useFiltersStore()
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 .filterType {
+  appearance: none;
+  border: 0;
   display: inline-flex;
   position: relative;
+  background: transparent;
+  color: inherit;
   padding: 5px 0px 5px 0px;
   font-size: 14px;
   font-weight: 300;

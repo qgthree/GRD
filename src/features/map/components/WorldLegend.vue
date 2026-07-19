@@ -108,14 +108,12 @@ const selectRegion = (regionName: string) => {
 
         <div v-else-if="densityLegendBuckets.length">
           <div class="legend-density" v-for="bucket in densityLegendBuckets" :key="bucket.label">
-            <div class="color_container">
-              <div
-                class="legend-region_color"
-                :style="{
-                  'background-color': densityLegendColor,
-                  opacity: bucket.fillOpacity
-                }">
-              </div>
+            <div
+              class="legend-region_color"
+              :style="{
+                'background-color': densityLegendColor,
+                opacity: bucket.fillOpacity
+              }">
             </div>
             <div class="density-label">{{ bucket.label }}</div>
           </div>
@@ -129,9 +127,7 @@ const selectRegion = (regionName: string) => {
             type="button"
             @click="selectRegion(region.name)"
           >
-            <div class="color_container">
-              <div class="legend-region_color" :style="{ 'background-color': region.color }"></div>
-            </div>
+            <div class="legend-region_color" :style="{ 'background-color': region.color }"></div>
             <div class="legend-region_name">{{ region.name }}</div>
             <div class="vendorCount">{{ vendorStore.stateVendorCount(region.name) }} vendors</div>
           </button>
@@ -186,11 +182,6 @@ const selectRegion = (regionName: string) => {
   grid-template-columns: 20% 1fr;
   align-items: center;
   margin: 6px 0px;
-}
-.legend-region > .color_container,
-.legend-density > .color_container {
-  display: inline-flex;
-  justify-content: flex-start;
 }
 .legend-region_color {
   width: 30px;
