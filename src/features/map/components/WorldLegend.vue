@@ -56,12 +56,12 @@ const selectedDistrict = computed(() => {
 const formatDistrictCode = (districtCode: string) => {
   const districtNumber = Number(districtCode)
 
-  return districtNumber > 0 ? String(districtNumber) : 'AL'
+  return districtNumber > 0 ? String(districtNumber) : 'At Large'
 }
 const selectedDistrictLabel = computed(() => {
   if (!selectedDistrict.value) return
 
-  return `${selectedDistrict.value.stateAbbreviation}-${formatDistrictCode(selectedDistrict.value.districtCode)}`
+  return `${selectedDistrict.value.stateAbbreviation} Congressional District ${formatDistrictCode(selectedDistrict.value.districtCode)}`
 })
 const legendTitle = computed(() => {
   if (selectedDistrictLabel.value) return selectedDistrictLabel.value;
