@@ -5,6 +5,7 @@ import type { LocationQuery } from "vue-router";
 import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
+import { useLocationStore } from '@/stores/locationStore';
 import home0 from "@/assets/images/home_FILL0.svg";
 import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
@@ -13,6 +14,7 @@ import filters1 from "@/assets/images/filters_FILL1.svg";
 const route = useRoute();
 const vendorStore = useVendorStore();
 const filtersStore = useFiltersStore();
+const locationStore = useLocationStore();
 
 const hasActiveFilters = computed(() => {
   return Boolean(route.query.state || route.query.district || route.query.services);
@@ -38,11 +40,25 @@ const formatSummary = (items: string[], fallback: string) => {
 const selectedStates = computed(() => queryList(route.query.state));
 const selectedDistricts = computed(() => queryList(route.query.district));
 const selectedServices = computed(() => queryList(route.query.services));
+const formatDistrictCode = (districtCode: string) => {
+  const districtNumber = Number(districtCode)
+
+  return districtNumber > 0 ? String(districtNumber) : 'AL'
+}
+const selectedDistrictLabels = computed(() => {
+  return selectedDistricts.value.map((geoid) => {
+    const district = locationStore.districts.find((candidate) => candidate.geoid === geoid)
+
+    if (!district) return geoid
+
+    return `${district.stateAbbreviation}-${formatDistrictCode(district.districtCode)}`
+  })
+});
 
 const locationSummary = computed(() => {
   const selectedLocations = selectedStates.value.length
     ? selectedStates.value
-    : selectedDistricts.value;
+    : selectedDistrictLabels.value;
 
   return formatSummary(selectedLocations, 'any location');
 });
