@@ -27,8 +27,7 @@ interface TigerCongressionalDistrictProperties {
 
 let parentBoundaryRequest: Promise<MapFeatureCollection<RegionFeature>> | null = null
 const congressionalDistrictBoundaryRequests = new Map<string, Promise<MapFeatureCollection<CountryFeature>>>()
-const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v3:maxOffset0.0005:miFull:antimeridian'
-const highFidelityStateBoundaryCodes = new Set(['26'])
+const parentBoundarySessionCacheKey = 'grd:tigerweb:states:v4:maxOffset0.01:antimeridian'
 
 const coordinate = (value: string) => Number.parseFloat(value)
 
@@ -157,28 +156,6 @@ const writeSessionCache = (key: string, data: unknown) => {
   }
 }
 
-const getHighFidelityStateBoundary = async (stateCode: string) => {
-  const collection = await queryTigerGeoJson<TigerStateProperties>(tigerWebLayers.states, {
-    where: `STATE='${stateCode}'`,
-    outFields: 'STATE,NAME,BASENAME,STUSAB,CENTLAT,CENTLON',
-    maxAllowableOffset: undefined,
-    geometryPrecision: '5'
-  })
-
-  const feature = collection.features[0]
-
-  return feature ? normalizeStateFeature(feature) : null
-}
-
-const applyHighFidelityStateBoundaryOverrides = async (features: RegionFeature[]) => {
-  const overrides = await Promise.all([...highFidelityStateBoundaryCodes].map(getHighFidelityStateBoundary))
-  const overridesByStateCode = new Map(overrides
-    .filter((feature): feature is RegionFeature => Boolean(feature))
-    .map((feature) => [feature.properties.STATE, feature]))
-
-  return features.map((feature) => overridesByStateCode.get(feature.properties.STATE) ?? feature)
-}
-
 export const getParentBoundaries = async () => {
   parentBoundaryRequest ??= Promise.resolve(readSessionCache<MapFeatureCollection<RegionFeature>>(parentBoundarySessionCacheKey))
     .then((cachedBoundaries) => {
@@ -186,13 +163,11 @@ export const getParentBoundaries = async () => {
 
       return queryTigerGeoJson<TigerStateProperties>(tigerWebLayers.states, {
         outFields: 'STATE,NAME,BASENAME,STUSAB,CENTLAT,CENTLON',
-        maxAllowableOffset: '0.0005',
-        geometryPrecision: '5'
+        maxAllowableOffset: '0.01',
+        geometryPrecision: '4'
       })
         .then((collection) => {
-          const features = collection.features.map(normalizeStateFeature)
-
-          return applyHighFidelityStateBoundaryOverrides(features)
+          return collection.features.map(normalizeStateFeature)
         })
         .then((features) => {
           const sortedFeatures = features.sort((firstFeature, secondFeature) => {
