@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from "vue-router";
-import type { LocationQuery } from "vue-router";
 import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
 import { useLocationStore } from '@/stores/locationStore';
+import { selectedQueryValues } from '@/utils/query';
 import home0 from "@/assets/images/home_FILL0.svg";
 import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
@@ -20,16 +20,6 @@ const hasActiveFilters = computed(() => {
   return Boolean(route.query.state || route.query.district || route.query.services);
 });
 
-// Route query values may arrive as a string or array. Normalize them before
-// turning them into the readable sentence shown in the nav.
-const queryList = (value: LocationQuery[string]) => {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean);
-  }
-
-  return value ? value.split(',').filter(Boolean) : [];
-}
-
 const formatSummary = (items: string[], fallback: string) => {
   if (!items.length) return fallback;
   if (items.length === 1) return items[0];
@@ -37,9 +27,9 @@ const formatSummary = (items: string[], fallback: string) => {
   return `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
 }
 
-const selectedStates = computed(() => queryList(route.query.state));
-const selectedDistricts = computed(() => queryList(route.query.district));
-const selectedServices = computed(() => queryList(route.query.services));
+const selectedStates = computed(() => selectedQueryValues(route.query, 'state'));
+const selectedDistricts = computed(() => selectedQueryValues(route.query, 'district'));
+const selectedServices = computed(() => selectedQueryValues(route.query, 'services'));
 const formatDistrictCode = (districtCode: string) => {
   const districtNumber = Number(districtCode)
 

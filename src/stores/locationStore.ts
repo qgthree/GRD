@@ -6,14 +6,12 @@ export const useLocationStore = defineStore('locationStore', {
   state: () => ({
     states: [] as State[],
     districts: [] as District[],
-    loading: false,
     error: null as string | null
   }),
   actions: {
     async loadStates() {
-      if (this.states.length || this.loading) return;
+      if (this.states.length) return;
 
-      this.loading = true;
       this.error = null;
 
       try {
@@ -22,15 +20,11 @@ export const useLocationStore = defineStore('locationStore', {
       catch (caughtError) {
         this.error = caughtError instanceof Error ? caughtError.message : 'Unable to load states';
       }
-      finally {
-        this.loading = false;
-      }
     },
 
     async loadDistricts() {
-      if (this.districts.length || this.loading) return;
+      if (this.districts.length) return;
 
-      this.loading = true;
       this.error = null;
 
       try {
@@ -39,9 +33,6 @@ export const useLocationStore = defineStore('locationStore', {
       }
       catch (caughtError) {
         this.error = caughtError instanceof Error ? caughtError.message : 'Unable to load congressional districts';
-      }
-      finally {
-        this.loading = false;
       }
     }
   }

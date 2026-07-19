@@ -1,5 +1,6 @@
 import type { LocationQuery } from 'vue-router'
 import type { BoundarySelection } from '@/features/map/types'
+import { selectedQueryValues } from '@/utils/query'
 
 interface BoundaryQueryKeys {
   stateKey: string
@@ -11,22 +12,12 @@ export const mapBoundaryQueryKeys = {
   districtKey: 'district'
 }
 
-// Vue Router query values can be strings, arrays, nulls, or undefined.
-// The map only needs a clean list of selected ids/names.
-const queryList = (value: LocationQuery[string]) => {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean) as string[]
-  }
-
-  return value ? value.split(',').filter(Boolean) : []
-}
-
 export const getBoundarySelection = (
   query: LocationQuery,
   keys: BoundaryQueryKeys
 ): BoundarySelection => {
-  const stateIds = queryList(query[keys.stateKey])
-  const districtIds = queryList(query[keys.districtKey])
+  const stateIds = selectedQueryValues(query, keys.stateKey)
+  const districtIds = selectedQueryValues(query, keys.districtKey)
 
   if (stateIds.length > 1) {
     return { type: 'state-list', ids: stateIds }

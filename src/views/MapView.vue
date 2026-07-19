@@ -15,7 +15,7 @@ const isVendorDataReady = computed(() => Boolean(vendorStore.vendors.length));
 const shouldShowLegend = computed(() => isVendorDataReady.value);
 
 const updateRouteData = async (query: typeof route.query) => {
-  await vendorStore.updateVendors([query]);
+  await vendorStore.updateVendors(query);
 }
 
 // Initial vendor filtering must happen before the map/list rely on filtered data.

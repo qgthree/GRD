@@ -1,3 +1,5 @@
+import type { QueryValue } from '@/utils/query';
+
 export interface Vendor {
   id: number;
   company_name: string;
@@ -15,7 +17,7 @@ export interface Vendor {
 
 // These fields mirror the current URL query filters.
 export interface VendorQuery {
-  services?: string | string[] | null;
-  state?: string | string[] | null;
-  district?: string | string[] | null;
+  services?: QueryValue;
+  state?: QueryValue;
+  district?: QueryValue;
 }

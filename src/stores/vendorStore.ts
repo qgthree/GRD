@@ -2,19 +2,12 @@ import { defineStore } from 'pinia';
 import { useLocationStore } from '@/stores/locationStore';
 import { getVendors } from '@/features/vendors/api/vendorDataSource';
 import type { Vendor, VendorQuery } from '@/features/vendors/types';
+import { queryList } from '@/utils/query';
 import {
   vendorProvidesService,
   vendorServesDistrict,
   vendorServesState
 } from '@/features/vendors/utils/vendorCoverage';
-
-const queryList = (value: VendorQuery[keyof VendorQuery]) => {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean);
-  }
-
-  return value ? value.split(',').filter(Boolean) : [];
-}
 
 export const useVendorStore = defineStore('vendorStore', {
   state: () => ({
@@ -43,16 +36,15 @@ export const useVendorStore = defineStore('vendorStore', {
       }
     },
 
-    async updateVendors(query: VendorQuery[]) {
-      await useLocationStore().loadDistricts();
+    async updateVendors(query: VendorQuery) {
+      const locationStore = useLocationStore();
+
+      await locationStore.loadDistricts();
       await this.loadVendors();
 
-      // Route watchers pass query objects in an array today. The first item is
-      // the active query state used to filter the local vendor list.
-      const activeQuery = query[0] ?? {};
-      const services = queryList(activeQuery.services);
-      const states = queryList(activeQuery.state);
-      const districts = queryList(activeQuery.district);
+      const services = queryList(query.services);
+      const states = queryList(query.state);
+      const districts = queryList(query.district);
       let urlFilteredVendors: Vendor[] = [];
 
       // Start with all vendors unless the URL asks for specific services.
@@ -69,7 +61,7 @@ export const useVendorStore = defineStore('vendorStore', {
       }
 
       if (states.length) {
-        const districtList = useLocationStore().districts.filter(district => states.includes(district.state));
+        const districtList = locationStore.districts.filter(district => states.includes(district.state));
         const checker = (vendor: Vendor) => {
           return states.some(state => vendorServesState(vendor, state, districtList));
         }
@@ -77,7 +69,7 @@ export const useVendorStore = defineStore('vendorStore', {
       }
 
       if (districts.length) {
-        const districtList = useLocationStore().districts.filter(district => districts.includes(district.geoid));
+        const districtList = locationStore.districts.filter(district => districts.includes(district.geoid));
         const checker = (vendor: Vendor) => {
           return districtList.some(district => vendorServesDistrict(vendor, district));
         }

@@ -39,7 +39,7 @@ export const getStates = async (): Promise<State[]> => {
 
 export const getDistricts = async (): Promise<District[]> => {
   congressionalDistrictsRequest ??= Promise.all([
-      getStates(),
+    getStates(),
     queryTigerJson<TigerCongressionalDistrictProperties>(tigerWebLayers.congressionalDistricts119, {
       outFields: 'GEOID,STATE,CD119,NAME,BASENAME',
       orderByFields: 'STATE,CD119'

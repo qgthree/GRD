@@ -3,6 +3,7 @@ import type {
   MapFeatureCollection,
   StateFeature
 } from '@/features/map/types'
+import { getStates } from '@/features/locations/api/locationDataSource'
 import { queryTigerGeoJson, tigerWebLayers, type TigerFeature } from '@/features/locations/api/tigerWeb'
 import type { Geometry, Position } from 'geojson'
 
@@ -188,11 +189,11 @@ export const getStateBoundaries = async () => {
 }
 
 const getStateNamesByCode = async () => {
-  const states = await getStateBoundaries()
+  const states = await getStates()
 
-  return new Map(states.features.map((feature) => [
-    feature.properties.stateCode,
-    feature.properties.name
+  return new Map(states.map((state) => [
+    state.code,
+    state.name
   ]))
 }
 
