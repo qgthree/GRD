@@ -7,8 +7,9 @@ export interface VendorDensityBucket {
 
 const maxDensityBuckets = 5
 const zeroVendorOpacity = 0.06
-const singleVendorOpacity = 0.22
-const maximumOpacity = 0.56
+const singleVendorOpacity = 0.18
+const mediumVendorOpacity = 0.36
+const maximumOpacity = 0.58
 
 const vendorLabel = (count: number) => {
   return count === 1 ? 'vendor' : 'vendors'
@@ -25,6 +26,13 @@ const bucketLabel = (bucket: Pick<VendorDensityBucket, 'min' | 'max'>) => {
 const bucketOpacity = (bucket: Pick<VendorDensityBucket, 'min' | 'max'>, maxCount: number) => {
   if (bucket.max <= 0) return zeroVendorOpacity
   if (maxCount <= 1) return singleVendorOpacity
+  if (maxCount === 2) return bucket.max === 1 ? singleVendorOpacity : mediumVendorOpacity
+  if (maxCount === 3) {
+    if (bucket.max === 1) return singleVendorOpacity
+    if (bucket.max === 2) return mediumVendorOpacity
+
+    return maximumOpacity
+  }
 
   // One vendor should remain visually light. Higher counts ramp smoothly, but
   // the darkest state still leaves boundary lines readable.
