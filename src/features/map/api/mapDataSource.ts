@@ -5,6 +5,7 @@ import type {
 } from '@/features/map/types'
 import { getStates } from '@/features/locations/api/locationDataSource'
 import { queryTigerGeoJson, tigerWebLayers, type TigerFeature } from '@/features/locations/api/tigerWeb'
+import { compareDistricts } from '@/features/locations/utils/districtSorting'
 
 interface TigerStateProperties {
   STATE: string
@@ -65,6 +66,23 @@ const normalizeCongressionalDistrictFeature = (
       districtCode: feature.properties.CD119
     }
   }
+}
+
+const compareDistrictFeatures = (firstFeature: DistrictFeature, secondFeature: DistrictFeature) => {
+  return compareDistricts(
+    {
+      state: firstFeature.properties.stateName,
+      districtCode: firstFeature.properties.districtCode,
+      geoid: firstFeature.properties.geoid,
+      name: firstFeature.properties.name
+    },
+    {
+      state: secondFeature.properties.stateName,
+      districtCode: secondFeature.properties.districtCode,
+      geoid: secondFeature.properties.geoid,
+      name: secondFeature.properties.name
+    }
+  )
 }
 
 // Read cached state boundary geometry from sessionStorage. Failures are ignored
@@ -150,7 +168,9 @@ const getCongressionalDistrictBoundariesForStateCode = async (stateCode: string)
         })
       ])
         .then(([stateNamesByCode, districts]) => ({
-          features: districts.features.map((feature) => normalizeCongressionalDistrictFeature(feature, stateNamesByCode))
+          features: districts.features
+            .map((feature) => normalizeCongressionalDistrictFeature(feature, stateNamesByCode))
+            .sort(compareDistrictFeatures)
         }))
         .catch((caughtError) => {
           congressionalDistrictBoundaryRequests.delete(stateCode)
@@ -173,7 +193,7 @@ export const getDistrictBoundariesForStates = async (states: string[]) => {
   const districtCollections = await Promise.all(stateCodes.map(getCongressionalDistrictBoundariesForStateCode))
 
   return {
-    features: districtCollections.flatMap((collection) => collection.features)
+    features: districtCollections.flatMap((collection) => collection.features).sort(compareDistrictFeatures)
   }
 }
 
@@ -188,5 +208,6 @@ export const getDistrictBoundariesForGeoids = async (geoids: string[]) => {
     features: districtCollections
       .flatMap((collection) => collection.features)
       .filter((feature) => requestedGeoids.has(feature.properties.geoid))
+      .sort(compareDistrictFeatures)
   }
 }

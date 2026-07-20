@@ -9,9 +9,7 @@ const { isLoading } = useBoundaryMap();
 <template>
   <div class="map-shell">
     <div id="map"></div>
-    <div v-if="isLoading" class="map-loading" role="status" aria-label="Loading map data">
-      <LoadingBars />
-    </div>
+    <LoadingBars v-if="isLoading" class="map-loading" role="status" aria-label="Loading map data" />
   </div>
 </template>
 
@@ -32,11 +30,7 @@ const { isLoading } = useBoundaryMap();
   left: 50%;
   bottom: 32px;
   z-index: 500;
-  border-radius: 999px;
-  padding: 8px 14px;
-  background-color: rgba(251, 251, 248, 0.92);
   color: #1a0033;
-  box-shadow: 0 8px 28px -18px rgba(0, 0, 0, 0.75);
   pointer-events: none;
   transform: translateX(-50%);
 }

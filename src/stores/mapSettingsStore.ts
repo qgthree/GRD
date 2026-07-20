@@ -25,7 +25,9 @@ export const useMapSettingsStore = defineStore('mapSettingsStore', {
             mapOptions: {
                 zoomSnap: 0.01, // Zoom level multiplier
                 zoomControl: false,
-                scrollWheelZoom: false,
+                scrollWheelZoom: true,
+                wheelPxPerZoomLevel: 100,
+                zoomDelta: 100,
                 doubleClickZoom: false,
                 preferCanvas: true,
                 worldCopyJump: true,

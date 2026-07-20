@@ -6,6 +6,7 @@ import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
 import { useLocationStore } from '@/stores/locationStore';
 import { selectedQueryValues } from '@/utils/query';
+import { sortDistricts } from '@/features/locations/utils/districtSorting';
 import home0 from "@/assets/images/home_FILL0.svg";
 import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
@@ -36,13 +37,15 @@ const formatDistrictCode = (districtCode: string) => {
   return districtNumber > 0 ? String(districtNumber) : 'AL'
 }
 const selectedDistrictLabels = computed(() => {
-  return selectedDistricts.value.map((geoid) => {
-    const district = locationStore.districts.find((candidate) => candidate.geoid === geoid)
-
-    if (!district) return geoid
-
+  const selectedDistrictGeoids = new Set(selectedDistricts.value)
+  const districts = sortDistricts(locationStore.districts.filter((district) => selectedDistrictGeoids.has(district.geoid)))
+  const districtLabels = districts.map((district) => {
     return `${district.stateAbbreviation}-${formatDistrictCode(district.districtCode)}`
   })
+  const knownDistrictGeoids = new Set(districts.map((district) => district.geoid))
+  const unknownDistrictLabels = selectedDistricts.value.filter((geoid) => !knownDistrictGeoids.has(geoid))
+
+  return [...districtLabels, ...unknownDistrictLabels]
 });
 
 const locationSummary = computed(() => {

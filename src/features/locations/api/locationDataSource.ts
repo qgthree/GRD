@@ -1,5 +1,6 @@
 import type { District, State } from '@/features/locations/types'
 import { queryTigerJson, tigerWebLayers } from '@/features/locations/api/tigerWeb'
+import { sortDistricts } from '@/features/locations/utils/districtSorting'
 
 interface TigerStateProperties {
   STATE: string
@@ -49,7 +50,7 @@ export const getDistricts = async (): Promise<District[]> => {
       const stateNamesByCode = new Map(states.map((state) => [state.code, state.name]))
       const stateAbbreviationsByCode = new Map(states.map((state) => [state.code, state.abbreviation]))
 
-      return districts.map((district) => {
+      return sortDistricts(districts.map((district) => {
         const stateName = stateNamesByCode.get(district.STATE) ?? district.STATE
         const stateAbbreviation = stateAbbreviationsByCode.get(district.STATE) ?? district.STATE
 
@@ -61,7 +62,7 @@ export const getDistricts = async (): Promise<District[]> => {
           districtCode: district.CD119,
           type: '119th Congressional District'
         }
-      })
+      }))
     })
     .catch((caughtError) => {
       congressionalDistrictsRequest = null

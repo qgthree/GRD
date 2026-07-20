@@ -6,6 +6,7 @@ import { useLocationStore } from '@/stores/locationStore';
 import AppLink from '@/components/AppLink.vue'
 import ResizeTransition from '@/components/ResizeTransition.vue'
 import { formatServiceName } from '@/features/vendors/utils/vendorFormatters'
+import { sortDistricts } from '@/features/locations/utils/districtSorting'
 import close from "@/assets/images/close.svg";
 
 // The store owns URL-level filtering; this component adds only local text search
@@ -16,6 +17,21 @@ const districts = useLocationStore().districts;
 
 const getDistrictName = (districtId: string) => {
   return districts.find((district) => district.geoid === districtId)?.name ?? districtId;
+}
+
+const sortedVendorDistricts = (districtIds: string[]) => {
+  const requestedDistricts = new Set(districtIds)
+  const sortedKnownDistrictIds = sortDistricts(
+    districts.filter((district) => requestedDistricts.has(district.geoid))
+  ).map((district) => district.geoid)
+  const knownDistrictIds = new Set(sortedKnownDistrictIds)
+  const unknownDistrictIds = districtIds.filter((districtId) => !knownDistrictIds.has(districtId))
+
+  return [...sortedKnownDistrictIds, ...unknownDistrictIds]
+}
+
+const formatVendorDistricts = (districtIds: string[]) => {
+  return sortedVendorDistricts(districtIds).map(getDistrictName).join(', ')
 }
 
 // This model is local to the input below and narrows the already route-filtered
@@ -93,7 +109,7 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
                   Congressional Districts:
                 </span>
                 <span v-if="!vendor.district_location.length">All districts</span>
-                <span v-for="(district, index) in vendor.district_location" :key="index">{{ getDistrictName(district) }}<span v-if="index < vendor.district_location.length - 1">, </span></span>
+                <span v-else>{{ formatVendorDistricts(vendor.district_location) }}</span>
               </div>
               <div class="list-data">
                 <span class="list-data_label">

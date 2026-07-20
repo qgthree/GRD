@@ -7,6 +7,7 @@ import { getBoundarySelection, mapBoundaryQueryKeys } from '@/features/map/utils
 import { findBoundaryStyle, heatmapBoundaryColor } from '@/features/map/utils/mapViewport'
 import { createVendorDensityBuckets } from '@/features/map/utils/vendorDensity'
 import type { District } from '@/features/locations/types'
+import { sortDistricts } from '@/features/locations/utils/districtSorting'
 
 // Small helper for one-off uniqueness checks without repeating Set plumbing.
 const uniqueValues = <TValue>(values: TValue[]) => [...new Set(values)]
@@ -81,7 +82,7 @@ export const useWorldLegend = () => {
 
     if (selection.type !== 'district-list') return []
 
-    return locationStore.districts.filter((district) => selection.ids.includes(district.geoid))
+    return sortDistricts(locationStore.districts.filter((district) => selection.ids.includes(district.geoid)))
   })
   // Vendor stores count by GEOID, while legend buckets work with district objects.
   const districtVendorCount = (district: District) => vendorStore.districtVendorCount(district.geoid) ?? 0
@@ -154,7 +155,7 @@ export const useWorldLegend = () => {
     const selectedStateDistricts = locationStore.districts
       .filter((district) => district.state === selectedState.value?.name)
 
-    return createVendorDensityBuckets(districtVendorCounts(selectedStateDistricts))
+    return createVendorDensityBuckets(districtVendorCounts(sortDistricts(selectedStateDistricts)))
   })
   // The map helper builds buckets light-to-dark; the legend reads better with
   // the highest vendor presence first.

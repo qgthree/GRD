@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useFiltersStore } from '@/stores/filtersStore';
+import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 
 const filtersStore = useFiltersStore()
+const { route, updateQuery } = useFilterQuery()
 </script>
 
 <template>
@@ -21,11 +23,22 @@ const filtersStore = useFiltersStore()
       @click="filtersStore.toggleFiltersView('sector')">
       Services
     </button>
+    <button
+      class="clear-filters"
+      type="button"
+      :disabled="!(route.query.state || route.query.district || route.query.services)"
+      @click="updateQuery({ state: undefined, district: undefined, services: undefined })">
+      clear all
+    </button>
   </div>
 </template>
 
 <style scoped>
 #filterSelector {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
   width: 100%;
   text-align: left;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -66,11 +79,31 @@ const filtersStore = useFiltersStore()
   -webkit-transform: scaleX(1);
   transform: scaleX(1);
 }
+.clear-filters {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(0, 0, 0);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 300;
+  margin-left: auto;
+  padding: 5px 0;
+}
+.clear-filters:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
 @media (hover: hover) {
   .filterType:hover:before {
     visibility: visible;
     -webkit-transform: scaleX(1);
     transform: scaleX(1);
+  }
+  .clear-filters:not(:disabled):hover {
+    color: rgba(0, 0, 0, 0.78);
   }
 }
 </style>

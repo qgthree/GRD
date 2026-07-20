@@ -5,6 +5,7 @@ import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import { useLocationStore } from '@/stores/locationStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import type { District } from '@/features/locations/types'
+import { sortDistricts } from '@/features/locations/utils/districtSorting'
 
 type LocationFilterMode = 'state' | 'district'
 type DistrictGroup = {
@@ -23,9 +24,9 @@ const states = computed(() => locationStore.states.map((state) => state.name))
 const districts = computed(() => {
   const selectableStates = new Set(states.value)
 
-  return [...locationStore.districts]
+  return sortDistricts(locationStore.districts
     .filter((district) => district.geoid && selectableStates.has(district.state))
-    .sort((firstDistrict, secondDistrict) => firstDistrict.name.localeCompare(secondDistrict.name))
+  )
 })
 const districtGroups = computed<DistrictGroup[]>(() => {
   const groups = new Map<string, District[]>()
@@ -224,14 +225,13 @@ onMounted(() => {
 .selected-count {
   display: inline-grid;
   place-items: center;
-  min-width: 22px;
-  height: 22px;
+  min-width: 20px;
+  height: 20px;
   border-radius: 999px;
   background-color: #651D32;
   color: #fff;
   font-size: 12px;
   line-height: 1;
-  padding: 0 7px;
 }
 .filter-options {
   display: grid;
