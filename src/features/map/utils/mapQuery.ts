@@ -1,23 +1,17 @@
 import type { LocationQuery } from 'vue-router'
 import type { BoundarySelection } from '@/features/map/types'
-import { selectedQueryValues } from '@/utils/query'
-
-interface BoundaryQueryKeys {
-  stateKey: string
-  districtKey: string
-}
-
-export const mapBoundaryQueryKeys = {
-  stateKey: 'state',
-  districtKey: 'district'
-}
+import type { District, State } from '@/features/locations/types'
+import {
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery
+} from '@/features/locations/utils/locationQuery'
 
 export const getBoundarySelection = (
   query: LocationQuery,
-  keys: BoundaryQueryKeys
+  locations: { states: State[]; districts: District[] }
 ): BoundarySelection => {
-  const stateIds = selectedQueryValues(query, keys.stateKey)
-  const districtIds = selectedQueryValues(query, keys.districtKey)
+  const stateIds = selectedStateNamesFromQuery(query, locations.states)
+  const districtIds = selectedDistrictGeoidsFromQuery(query, locations.districts)
 
   if (stateIds.length > 1) {
     return { type: 'state-list', ids: stateIds }

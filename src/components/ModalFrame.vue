@@ -28,6 +28,8 @@
 
         <slot name="header" :close="() => emit('closeModal')" />
 
+        <slot name="before-content" />
+
         <div class="modal-content">
           <slot />
         </div>

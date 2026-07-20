@@ -68,22 +68,8 @@ const normalizeCongressionalDistrictFeature = (
   }
 }
 
-const compareDistrictFeatures = (firstFeature: DistrictFeature, secondFeature: DistrictFeature) => {
-  return compareDistricts(
-    {
-      state: firstFeature.properties.stateName,
-      districtCode: firstFeature.properties.districtCode,
-      geoid: firstFeature.properties.geoid,
-      name: firstFeature.properties.name
-    },
-    {
-      state: secondFeature.properties.stateName,
-      districtCode: secondFeature.properties.districtCode,
-      geoid: secondFeature.properties.geoid,
-      name: secondFeature.properties.name
-    }
-  )
-}
+const compareDistrictFeatures = (firstFeature: DistrictFeature, secondFeature: DistrictFeature) =>
+  compareDistricts(firstFeature.properties, secondFeature.properties)
 
 // Read cached state boundary geometry from sessionStorage. Failures are ignored
 // because cache access is only a performance optimization.

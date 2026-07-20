@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useWorldLegend } from '@/features/map/composables/useWorldLegend';
+import { selectedFilterQueryValues } from '@/utils/query';
+import { computed } from 'vue';
 
 const {
   densityLegendBuckets,
@@ -14,17 +16,17 @@ const {
   globalVendorCount,
   visibleStates
 } = useWorldLegend();
+
+const hasSectorFilter = computed(() => selectedFilterQueryValues(route.query, 'services').length > 0);
 </script>
 
 <template>
   <!-- Legend colors come from the same map settings used by the Leaflet layers. -->
   <div class="legend">
-    <div class="component_header">
-      <div>
-        {{ legendTitle }}
-        <span v-if="route.query.services" style="font-style: italic;"> (filtered)</span>
-      </div>
-    </div>
+    <h2 class="component_header">
+      {{ legendTitle }}
+      <span v-if="hasSectorFilter" style="font-style: italic;"> (filtered)</span>
+    </h2>
     <ResizeTransition>
       <div class="component_body">
         <div v-if="selectedDistrict" class="district-vendor-count">
@@ -38,8 +40,7 @@ const {
               :style="{
                 'background-color': densityLegendColor,
                 opacity: bucket.fillOpacity
-              }">
-            </div>
+              }" />
             <div class="density-label">{{ bucket.label }}</div>
           </div>
         </div>
@@ -84,6 +85,7 @@ const {
 .component_header {
   background-color: #452145;
   grid-template-columns: 1fr;
+  margin: 0;
 }
 .legend-state {
   border: 0;

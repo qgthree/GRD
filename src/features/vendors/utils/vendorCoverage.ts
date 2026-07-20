@@ -1,10 +1,11 @@
 import type { District } from '@/features/locations/types'
 import type { Vendor } from '@/features/vendors/types'
+import { selectedNaicsCodeMatches } from '@/features/naics/utils/naicsCodes'
 
-// Service filtering uses a loose substring match because the URL value may come
-// from human-readable labels rather than exact stored service names.
-export const vendorProvidesService = (vendor: Vendor, service: string) => {
-  return vendor.subsectors.join(',').toLowerCase().includes(service.toLowerCase())
+export const vendorProvidesService = (vendor: Vendor, service: string, excludedServices: string[] = []) => {
+  return vendor.subsectors.some((vendorService) => {
+    return selectedNaicsCodeMatches(vendorService, [service], excludedServices)
+  })
 }
 
 // A vendor can serve a district directly, globally, or indirectly through an

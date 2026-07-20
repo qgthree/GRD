@@ -7,6 +7,7 @@ import AppLink from '@/components/AppLink.vue'
 import ResizeTransition from '@/components/ResizeTransition.vue'
 import { formatServiceName } from '@/features/vendors/utils/vendorFormatters'
 import { sortDistricts } from '@/features/locations/utils/districtSorting'
+import { getNaicsLabel } from '@/features/naics/utils/naicsCodes'
 import close from "@/assets/images/close.svg";
 
 // The store owns URL-level filtering; this component adds only local text search
@@ -15,23 +16,18 @@ const vendorStore = useVendorStore();
 const { filteredVendors } = storeToRefs(vendorStore);
 const districts = useLocationStore().districts;
 
-const getDistrictName = (districtId: string) => {
-  return districts.find((district) => district.geoid === districtId)?.name ?? districtId;
-}
-
-const sortedVendorDistricts = (districtIds: string[]) => {
+const formatVendorDistricts = (districtIds: string[]) => {
   const requestedDistricts = new Set(districtIds)
-  const sortedKnownDistrictIds = sortDistricts(
+  const sortedKnownDistricts = sortDistricts(
     districts.filter((district) => requestedDistricts.has(district.geoid))
-  ).map((district) => district.geoid)
-  const knownDistrictIds = new Set(sortedKnownDistrictIds)
+  )
+  const knownDistrictIds = new Set(sortedKnownDistricts.map((district) => district.geoid))
   const unknownDistrictIds = districtIds.filter((districtId) => !knownDistrictIds.has(districtId))
 
-  return [...sortedKnownDistrictIds, ...unknownDistrictIds]
-}
-
-const formatVendorDistricts = (districtIds: string[]) => {
-  return sortedVendorDistricts(districtIds).map(getDistrictName).join(', ')
+  return [
+    ...sortedKnownDistricts.map((district) => district.name),
+    ...unknownDistrictIds
+  ].join(', ')
 }
 
 // This model is local to the input below and narrows the already route-filtered
@@ -45,7 +41,7 @@ let searchFilteredVendors = computed(() => {
     let search = vendorSearch.value.toLowerCase();
     return (
       vendor.company_name.toLowerCase().includes(search) ||
-      vendor.subsectors && vendor.subsectors.join(',').toLowerCase().includes(search) ||
+      vendor.subsectors && vendor.subsectors.map(getNaicsLabel).join(',').toLowerCase().includes(search) ||
       vendor.email && vendor.email.toLowerCase().includes(search) ||
       vendor['primary_contact(s)'] && vendor['primary_contact(s)'].toLowerCase().includes(search) ||
       vendor.phone && vendor.phone.toLowerCase().includes(search) ||
@@ -82,10 +78,10 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
   <div id="vlist">
     <ResizeTransition>
       <div class="component_header">
-        <div class="header-left">{{ filteredVendors.length }} Vendor<span v-if="filteredVendors.length !== 1">s</span></div>
-        <div class="header-right">
-          <img :src="close" @click="vendorStore.toggleVendors()" />
-        </div>
+        <span class="header-left">{{ filteredVendors.length }} Vendor<span v-if="filteredVendors.length !== 1">s</span></span>
+        <button class="header-right icon-button" type="button" aria-label="Close vendor list" @click="vendorStore.toggleVendors()">
+          <img :src="close" alt="" />
+        </button>
       </div>
       <div class="component_body">
         <input v-model="vendorSearch" type="text" placeholder="search for a vendor" />

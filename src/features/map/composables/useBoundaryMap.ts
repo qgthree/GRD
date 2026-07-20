@@ -2,10 +2,11 @@ import L from 'leaflet'
 import { onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 import { useVendorStore } from '@/stores/vendorStore'
+import { useLocationStore } from '@/stores/locationStore'
 import { useMapSettingsStore } from '@/stores/mapSettingsStore'
 import { useMapData } from '@/features/map/composables/useMapData'
 import { createBoundaryLayer } from '@/features/map/utils/mapLayers'
-import { getBoundarySelection, mapBoundaryQueryKeys } from '@/features/map/utils/mapQuery'
+import { getBoundarySelection } from '@/features/map/utils/mapQuery'
 import {
   alaskaStateName,
   findBoundaryStyle,
@@ -18,6 +19,8 @@ import {
   findVendorDensityBucket,
   type VendorDensityBucket
 } from '@/features/map/utils/vendorDensity'
+import { districtQueryValue, stateQueryValue } from '@/features/locations/utils/locationQuery'
+import { compactFilterQueryUpdates, type FilterQueryKey } from '@/utils/query'
 import type {
   DistrictFeature,
   LeafSettings,
@@ -35,6 +38,7 @@ export const useBoundaryMap = () => {
   const router = useRouter()
   const route = useRoute()
   const vendorStore = useVendorStore()
+  const locationStore = useLocationStore()
   const { leafSettings } = useMapSettingsStore() as { leafSettings: LeafSettings }
   const {
     stateBoundaries,
@@ -49,6 +53,26 @@ export const useBoundaryMap = () => {
   let map: L.Map
   let boundaryLayerGroup: L.LayerGroup
   let backgroundClickTarget: BackgroundClickTarget = null
+
+  const updateMapRoute = (query: Partial<Record<FilterQueryKey, string | undefined>>) => {
+    void router.push({
+      path: '/map',
+      query: {
+        ...route.query,
+        ...compactFilterQueryUpdates(query)
+      }
+    })
+  }
+
+  const selectCountry = () => updateMapRoute({ state: undefined, district: undefined })
+  const selectState = (stateName: string) => updateMapRoute({
+    state: stateQueryValue(stateName, locationStore.states),
+    district: undefined
+  })
+  const selectDistrict = (geoid: string) => updateMapRoute({
+    state: undefined,
+    district: districtQueryValue(geoid, locationStore.districts)
+  })
 
   // Create the Leaflet instance and the one layer group that all boundary
   // selections will replace.
@@ -88,25 +112,11 @@ export const useBoundaryMap = () => {
     if (!backgroundClickTarget) return
 
     if (backgroundClickTarget.type === 'state') {
-      void router.push({
-        path: '/map',
-        query: {
-          ...route.query,
-          state: backgroundClickTarget.stateName,
-          district: undefined
-        }
-      })
+      selectState(backgroundClickTarget.stateName)
       return
     }
 
-    void router.push({
-      path: '/map',
-      query: {
-        ...route.query,
-        state: undefined,
-        district: undefined
-      }
-    })
+    selectCountry()
   }
 
   // Fit the viewport to a rendered Leaflet GeoJSON layer.
@@ -128,26 +138,25 @@ export const useBoundaryMap = () => {
     }
   }
 
-  // State views normally fit the district layer; Alaska gets a fixed viewport
-  // because bounds fitting crosses the antimeridian awkwardly.
-  const setStateViewport = (stateName: string, layer: L.GeoJSON) => {
+  const setStateViewport = (stateName: string, fitViewport: () => void) => {
     if (stateName === alaskaStateName) {
       setAlaskaViewport(map)
       return
     }
 
-    fitBoundaryLayer(layer)
+    fitViewport()
+  }
+
+  // State views normally fit the district layer; Alaska gets a fixed viewport
+  // because bounds fitting crosses the antimeridian awkwardly.
+  const setDistrictLayerViewport = (stateName: string, layer: L.GeoJSON) => {
+    setStateViewport(stateName, () => fitBoundaryLayer(layer))
   }
 
   // Multi-district selections within one state use the state's outline only to
   // choose a viewport, not as a rendered background layer.
   const setStateBoundaryViewport = (stateBoundary: StateFeature) => {
-    if (stateBoundary.properties.name === alaskaStateName) {
-      setAlaskaViewport(map)
-      return
-    }
-
-    fitBoundaryFeatures([stateBoundary])
+    setStateViewport(stateBoundary.properties.name, () => fitBoundaryFeatures([stateBoundary]))
   }
 
   // Single-district selections fit to the district, except Alaska's at-large
@@ -197,7 +206,7 @@ export const useBoundaryMap = () => {
 
   // Check whether the current route still matches the request that just resolved.
   const isCurrentSelection = (expectedSelectionKey: string) => {
-    return selectionKey(getBoundarySelection(route.query, mapBoundaryQueryKeys)) === expectedSelectionKey
+    return selectionKey(getBoundarySelection(route.query, locationStore)) === expectedSelectionKey
   }
 
   const createStateBoundaries = (features: StateFeature[], densityBuckets?: VendorDensityBucket[]) => {
@@ -216,14 +225,7 @@ export const useBoundaryMap = () => {
           return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
         }
         : undefined,
-      onFeatureClick: (feature) => router.push({
-        path: '/map',
-        query: {
-          ...route.query,
-          state: feature.properties.name,
-          district: undefined
-        }
-      })
+      onFeatureClick: (feature) => selectState(feature.properties.name)
     })
   }
 
@@ -246,14 +248,7 @@ export const useBoundaryMap = () => {
           return findVendorDensityBucket(densityBuckets, vendorCount)?.fillOpacity ?? leafSettings.features.lightOpacity
         }
         : undefined,
-      onFeatureClick: (feature) => router.push({
-        path: '/map',
-        query: {
-          ...route.query,
-          state: undefined,
-          district: feature.properties.geoid
-        }
-      })
+      onFeatureClick: (feature) => selectDistrict(feature.properties.geoid)
     })
   }
 
@@ -276,7 +271,7 @@ export const useBoundaryMap = () => {
     // Route watchers can run before async map data has loaded.
     if (!stateBoundaries.value) return
 
-    const selection = getBoundarySelection(query, mapBoundaryQueryKeys)
+    const selection = getBoundarySelection(query, locationStore)
     const currentSelectionKey = selectionKey(selection)
 
     // Synchronous state views can replace the layer immediately. District views
@@ -324,7 +319,7 @@ export const useBoundaryMap = () => {
 
       setBoundaryLayer(districtBoundaryLayer)
       if (moveViewport) {
-        setStateViewport(selection.id, districtBoundaryLayer)
+        setDistrictLayerViewport(selection.id, districtBoundaryLayer)
       }
       return
     }

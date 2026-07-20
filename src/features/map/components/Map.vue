@@ -7,20 +7,13 @@ const { isLoading } = useBoundaryMap();
 </script>
 
 <template>
-  <div class="map-shell">
-    <div id="map"></div>
-    <LoadingBars v-if="isLoading" class="map-loading" role="status" aria-label="Loading map data" />
-  </div>
+  <div id="map"></div>
+  <LoadingBars v-if="isLoading" class="map-loading" role="status" aria-label="Loading map data" />
 </template>
 
 <style>
-.map-shell {
-  position: relative;
-  height: 100%;
-  width: 100%;
-}
-
 #map {
+  position: relative;
   height: 100%;
   width: 100%;
 }

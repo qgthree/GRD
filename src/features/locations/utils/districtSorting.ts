@@ -1,6 +1,9 @@
 import type { District } from '@/features/locations/types'
 
-type DistrictSortFields = Pick<District, 'districtCode' | 'geoid' | 'name' | 'state'>
+type DistrictSortFields = Pick<District, 'districtCode' | 'geoid' | 'name'> & {
+  state?: string
+  stateName?: string
+}
 
 const districtNumber = (districtCode: string) => {
   const parsedDistrictCode = Number(districtCode)
@@ -14,7 +17,8 @@ export const compareDistricts = (
   firstDistrict: DistrictSortFields,
   secondDistrict: DistrictSortFields
 ) => {
-  const stateOrder = firstDistrict.state.localeCompare(secondDistrict.state)
+  const stateOrder = (firstDistrict.state ?? firstDistrict.stateName ?? '')
+    .localeCompare(secondDistrict.state ?? secondDistrict.stateName ?? '')
   if (stateOrder) return stateOrder
 
   const districtOrder = districtNumber(firstDistrict.districtCode) - districtNumber(secondDistrict.districtCode)

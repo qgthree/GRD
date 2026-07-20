@@ -1,4 +1,4 @@
-import type { QueryValue } from '@/utils/query';
+import type { LocationQuery } from 'vue-router';
 
 export interface Vendor {
   id: number;
@@ -15,9 +15,5 @@ export interface Vendor {
   isVisible: boolean;
 }
 
-// These fields mirror the current URL query filters.
-export interface VendorQuery {
-  services?: QueryValue;
-  state?: QueryValue;
-  district?: QueryValue;
-}
+// Vendor filters are read from the route query, including compact and legacy keys.
+export type VendorQuery = LocationQuery;

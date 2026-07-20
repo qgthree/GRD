@@ -4,7 +4,14 @@ import CollapseTransition from '@/components/CollapseTransition.vue'
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import { useLocationStore } from '@/stores/locationStore'
 import { useFiltersStore } from '@/stores/filtersStore'
+import { selectedFilterQueryValues } from '@/utils/query'
 import type { District } from '@/features/locations/types'
+import {
+  districtQueryValue,
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery,
+  stateQueryValue
+} from '@/features/locations/utils/locationQuery'
 import { sortDistricts } from '@/features/locations/utils/districtSorting'
 
 type LocationFilterMode = 'state' | 'district'
@@ -15,10 +22,10 @@ type DistrictGroup = {
 
 const locationStore = useLocationStore()
 const filtersStore = useFiltersStore()
-const { route, selectedValues, toggleQueryValue, updateQuery } = useFilterQuery()
+const { route, toggleQueryValue, updateQuery } = useFilterQuery()
 
-const selectedStates = selectedValues('state')
-const selectedDistricts = selectedValues('district')
+const selectedStates = computed(() => selectedStateNamesFromQuery(route.query, locationStore.states))
+const selectedDistricts = computed(() => selectedDistrictGeoidsFromQuery(route.query, locationStore.districts))
 
 const states = computed(() => locationStore.states.map((state) => state.name))
 const districts = computed(() => {
@@ -65,13 +72,13 @@ watch(districtGroups, (groups) => {
   filtersStore.initializeCollapsedDistrictStates(groups.map((group) => group.state))
 }, { immediate: true })
 
-watch(() => [route.query.district, route.query.state], ([districtQuery, stateQuery]) => {
-  if (districtQuery) {
+watch(() => route.query, (query) => {
+  if (selectedFilterQueryValues(query, 'district').length) {
     filtersStore.setLocationMode('district')
     return
   }
 
-  if (stateQuery) {
+  if (selectedFilterQueryValues(query, 'state').length) {
     filtersStore.setLocationMode('state')
   }
 }, { immediate: true })
@@ -90,15 +97,13 @@ onMounted(() => {
       @click="setLocationMode('state')">
       Filter By State
     </button>
-    <div class="selectorCenter">
-      <label class="switch">
-        <input
-          type="checkbox"
-          :checked="filtersStore.locationMode === 'district'"
-          @change="setLocationMode(filtersStore.locationMode === 'state' ? 'district' : 'state')" />
-        <span class="slider"></span>
-      </label>
-    </div>
+    <label class="switch selectorCenter">
+      <input
+        type="checkbox"
+        :checked="filtersStore.locationMode === 'district'"
+        @change="setLocationMode(filtersStore.locationMode === 'state' ? 'district' : 'state')" />
+      <span class="slider"></span>
+    </label>
     <button
       class="selectorRight"
       :class="{ active: filtersStore.locationMode === 'district' }"
@@ -113,7 +118,7 @@ onMounted(() => {
       <input
         type="checkbox"
         :checked="selectedStates.includes(state)"
-        @change="toggleQueryValue('state', state)" />
+        @change="toggleQueryValue('state', stateQueryValue(state, locationStore.states))" />
       <span>{{ state }}</span>
     </label>
   </div>
@@ -125,9 +130,9 @@ onMounted(() => {
           type="button"
           :aria-expanded="filtersStore.isDistrictStateOpen(group.state)"
           @click="filtersStore.toggleDistrictState(group.state)">
-          <span class="district-state-title">
+          <span class="filter-bucket-title">
             <span>{{ group.state }}</span>
-            <span v-if="selectedDistrictCountForState(group.districts)" class="selected-count">
+            <span v-if="selectedDistrictCountForState(group.districts)" class="filter-selected-count">
               {{ selectedDistrictCountForState(group.districts) }}
             </span>
           </span>
@@ -140,7 +145,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="selectedDistricts.includes(district.geoid)"
-              @change="toggleQueryValue('district', district.geoid)" />
+              @change="toggleQueryValue('district', districtQueryValue(district.geoid, locationStore.districts))" />
             <span>{{ district.name }}</span>
           </label>
         </div>
@@ -197,6 +202,7 @@ onMounted(() => {
 }
 .state-options {
   padding: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .district-state-group h3 {
   margin-bottom: 0;
@@ -217,22 +223,6 @@ onMounted(() => {
   padding: 14px;
   text-align: left;
 }
-.district-state-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.selected-count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background-color: #651D32;
-  color: #fff;
-  font-size: 12px;
-  line-height: 1;
-}
 .filter-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -243,6 +233,7 @@ onMounted(() => {
   padding: 2px 14px 14px;
 }
 .filter-option {
+  color: #111;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;

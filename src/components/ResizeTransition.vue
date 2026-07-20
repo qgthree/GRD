@@ -17,15 +17,13 @@ const height = ref('auto')
 let observer: ResizeObserver | null = null
 let animationFrame = 0
 
-const shouldMeasureWidth = computed(() => props.axis === 'width' || props.axis === 'both')
-const shouldMeasureHeight = computed(() => props.axis === 'height' || props.axis === 'both')
-const transition = computed(() => {
-  const transitions = []
-  if (shouldMeasureWidth.value) transitions.push(`width ${props.duration}ms ease-out`)
-  if (shouldMeasureHeight.value) transitions.push(`height ${props.duration}ms ease-out`)
+const measuresWidth = () => props.axis === 'width' || props.axis === 'both'
+const measuresHeight = () => props.axis === 'height' || props.axis === 'both'
 
-  return transitions.join(', ')
-})
+const transition = computed(() => [
+  measuresWidth() && `width ${props.duration}ms ease-out`,
+  measuresHeight() && `height ${props.duration}ms ease-out`
+].filter(Boolean).join(', '))
 
 const updateSize = () => {
   if (!content.value) return
@@ -34,11 +32,11 @@ const updateSize = () => {
   animationFrame = requestAnimationFrame(() => {
     if (!content.value) return
 
-    if (shouldMeasureWidth.value) {
+    if (measuresWidth()) {
       width.value = `${content.value.offsetWidth}px`
     }
 
-    if (shouldMeasureHeight.value) {
+    if (measuresHeight()) {
       height.value = `${content.value.offsetHeight}px`
     }
   })
@@ -66,12 +64,12 @@ onUnmounted(() => {
   <div
     class="resize-transition"
     :style="{
-      width: shouldMeasureWidth ? width : undefined,
-      height: shouldMeasureHeight ? height : undefined,
+      width: measuresWidth() ? width : undefined,
+      height: measuresHeight() ? height : undefined,
       transition
     }"
   >
-    <div ref="content" class="resize-transition-content" :class="`axis-${axis}`">
+    <div ref="content" class="resize-transition-content" :class="{ 'measure-width': measuresWidth() }">
       <slot />
     </div>
   </div>
@@ -86,8 +84,7 @@ onUnmounted(() => {
   display: flow-root;
 }
 
-.resize-transition-content.axis-width,
-.resize-transition-content.axis-both {
+.resize-transition-content.measure-width {
   display: inline-block;
 }
 </style>

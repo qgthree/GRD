@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useFiltersStore } from '@/stores/filtersStore';
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
+import { hasActiveFilterQuery } from '@/utils/query'
 
 const filtersStore = useFiltersStore()
 const { route, updateQuery } = useFilterQuery()
@@ -14,20 +15,20 @@ const { route, updateQuery } = useFilterQuery()
       :class="{ active: filtersStore.status === 'location' }"
       type="button"
       @click="filtersStore.toggleFiltersView('location')">
-      Locations
+      Location
     </button>
     <button
       class="filterType"
       :class="{ active: filtersStore.status === 'sector' }"
       type="button"
       @click="filtersStore.toggleFiltersView('sector')">
-      Services
+      Sector (NAICS)
     </button>
     <button
       class="clear-filters"
       type="button"
-      :disabled="!(route.query.state || route.query.district || route.query.services)"
-      @click="updateQuery({ state: undefined, district: undefined, services: undefined })">
+      :disabled="!hasActiveFilterQuery(route.query)"
+      @click="updateQuery({ state: undefined, district: undefined, services: undefined, servicesExclude: undefined })">
       clear all
     </button>
   </div>
@@ -86,7 +87,7 @@ const { route, updateQuery } = useFilterQuery()
   color: rgba(0, 0, 0);
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-style: italic;
   font-weight: 300;
   margin-left: auto;

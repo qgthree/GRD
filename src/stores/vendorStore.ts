@@ -2,7 +2,11 @@ import { defineStore } from 'pinia';
 import { useLocationStore } from '@/stores/locationStore';
 import { getVendors } from '@/features/vendors/api/vendorDataSource';
 import type { Vendor, VendorQuery } from '@/features/vendors/types';
-import { queryList } from '@/utils/query';
+import { selectedFilterQueryValues } from '@/utils/query';
+import {
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery
+} from '@/features/locations/utils/locationQuery';
 import {
   vendorProvidesService,
   vendorServesDistrict,
@@ -42,9 +46,10 @@ export const useVendorStore = defineStore('vendorStore', {
       await locationStore.loadDistricts();
       await this.loadVendors();
 
-      const services = queryList(query.services);
-      const states = queryList(query.state);
-      const districts = queryList(query.district);
+      const services = selectedFilterQueryValues(query, 'services');
+      const excludedServices = selectedFilterQueryValues(query, 'servicesExclude');
+      const states = selectedStateNamesFromQuery(query, locationStore.states);
+      const districts = selectedDistrictGeoidsFromQuery(query, locationStore.districts);
       let urlFilteredVendors: Vendor[] = [];
 
       // Start with all vendors unless the URL asks for specific services.
@@ -54,7 +59,7 @@ export const useVendorStore = defineStore('vendorStore', {
       else {
         const checker = (vendor: Vendor) => {
           return services.some(service =>
-            vendorProvidesService(vendor, service)
+            vendorProvidesService(vendor, service, excludedServices)
           );
         }
         urlFilteredVendors = this.vendors.filter(checker);

@@ -5,8 +5,13 @@ import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
 import { useLocationStore } from '@/stores/locationStore';
-import { selectedQueryValues } from '@/utils/query';
+import { hasActiveFilterQuery, selectedFilterQueryValues } from '@/utils/query';
 import { sortDistricts } from '@/features/locations/utils/districtSorting';
+import {
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery
+} from '@/features/locations/utils/locationQuery';
+import { getNaicsLabel } from '@/features/naics/utils/naicsCodes';
 import home0 from "@/assets/images/home_FILL0.svg";
 import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
@@ -18,7 +23,7 @@ const filtersStore = useFiltersStore();
 const locationStore = useLocationStore();
 
 const hasActiveFilters = computed(() => {
-  return Boolean(route.query.state || route.query.district || route.query.services);
+  return hasActiveFilterQuery(route.query);
 });
 
 const formatSummary = (items: string[], fallback: string) => {
@@ -28,9 +33,9 @@ const formatSummary = (items: string[], fallback: string) => {
   return `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
 }
 
-const selectedStates = computed(() => selectedQueryValues(route.query, 'state'));
-const selectedDistricts = computed(() => selectedQueryValues(route.query, 'district'));
-const selectedServices = computed(() => selectedQueryValues(route.query, 'services'));
+const selectedStates = computed(() => selectedStateNamesFromQuery(route.query, locationStore.states));
+const selectedDistricts = computed(() => selectedDistrictGeoidsFromQuery(route.query, locationStore.districts));
+const selectedServices = computed(() => selectedFilterQueryValues(route.query, 'services'));
 const formatDistrictCode = (districtCode: string) => {
   const districtNumber = Number(districtCode)
 
@@ -57,7 +62,7 @@ const locationSummary = computed(() => {
 });
 
 const sectorSummary = computed(() => {
-  return formatSummary(selectedServices.value, 'any sector');
+  return formatSummary(selectedServices.value.map(getNaicsLabel), 'any sector');
 });
 </script>
 

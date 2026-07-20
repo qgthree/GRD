@@ -9,6 +9,7 @@ export const useFiltersStore = defineStore('filterStore', {
   state: () => ({
     status: 'hidden' as FilterStatus,
     locationMode: 'state' as LocationFilterMode,
+    openNaicsBucketLevel: null as number | null,
     collapsedDistrictStates: [] as string[],
     districtStatesHaveInitialized: false,
     filterHistoryEntryPrepared: false
@@ -32,6 +33,12 @@ export const useFiltersStore = defineStore('filterStore', {
     },
     setLocationMode(mode: LocationFilterMode) {
       this.locationMode = mode;
+    },
+    toggleNaicsBucket(level: number) {
+      this.openNaicsBucketLevel = this.openNaicsBucketLevel === level ? null : level;
+    },
+    isNaicsBucketOpen(level: number) {
+      return this.openNaicsBucketLevel === level;
     },
     initializeCollapsedDistrictStates(states: string[]) {
       if (this.districtStatesHaveInitialized) return;
