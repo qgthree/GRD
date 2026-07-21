@@ -1,7 +1,10 @@
 import type { Feature, Geometry } from 'geojson'
 
 export const tigerWebBaseUrl =
-  import.meta.env.VITE_TIGERWEB_BASE_URL ?? '/tigerweb/rest/services/TIGERweb/tigerWMS_Current/MapServer'
+  import.meta.env.VITE_TIGERWEB_BASE_URL ??
+  (import.meta.env.DEV
+    ? '/tigerweb/rest/services/TIGERweb/tigerWMS_Current/MapServer'
+    : 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer')
 
 export const tigerWebLayers = {
   congressionalDistricts119: 54,
