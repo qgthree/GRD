@@ -2,19 +2,17 @@ import { defineStore } from 'pinia';
 import { useLocationStore } from '@/stores/locationStore';
 import { getVendors } from '@/features/vendors/api/vendorDataSource';
 import type { Vendor, VendorQuery } from '@/features/vendors/types';
+import { selectedFilterQueryValues } from '@/utils/query';
 import {
-  vendorProvidesService,
-  vendorServesCountry,
-  vendorServesRegion
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery
+} from '@/features/locations/utils/locationQuery';
+import {
+  vendorProvidesSelectedService,
+  vendorServesDistrict,
+  vendorServesState
 } from '@/features/vendors/utils/vendorCoverage';
-
-const queryList = (value: VendorQuery[keyof VendorQuery]) => {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean);
-  }
-
-  return value ? value.split(',').filter(Boolean) : [];
-}
+import { createSelectedNaicsMatcher } from '@/features/naics/api/naicsDataSource';
 
 export const useVendorStore = defineStore('vendorStore', {
   state: () => ({
@@ -23,7 +21,9 @@ export const useVendorStore = defineStore('vendorStore', {
     filteredVendors: [] as Vendor[],
     loading: false,
     error: null as string | null,
-    show: true
+    // Keep the list closed on initial map load so its component and label
+    // hydration work are deferred until the user asks to inspect vendors.
+    show: false
   }),
   actions: {
     async loadVendors() {
@@ -43,16 +43,16 @@ export const useVendorStore = defineStore('vendorStore', {
       }
     },
 
-    async updateVendors(query: VendorQuery[]) {
-      await useLocationStore().loadCountries();
+    async updateVendors(query: VendorQuery) {
+      const locationStore = useLocationStore();
+
+      await locationStore.loadDistricts();
       await this.loadVendors();
 
-      // Route watchers pass query objects in an array today. The first item is
-      // the active query state used to filter the local vendor list.
-      const activeQuery = query[0] ?? {};
-      const services = queryList(activeQuery.services);
-      const regions = queryList(activeQuery.region);
-      const countries = queryList(activeQuery.country);
+      const services = selectedFilterQueryValues(query, 'services');
+      const excludedServices = selectedFilterQueryValues(query, 'servicesExclude');
+      const states = selectedStateNamesFromQuery(query, locationStore.states);
+      const districts = selectedDistrictGeoidsFromQuery(query, locationStore.districts);
       let urlFilteredVendors: Vendor[] = [];
 
       // Start with all vendors unless the URL asks for specific services.
@@ -60,30 +60,27 @@ export const useVendorStore = defineStore('vendorStore', {
         urlFilteredVendors = this.vendors;
       }
       else {
+        // Sector filtering is the one initial-route case that truly needs the
+        // NAICS catalog. Build the matcher once, then reuse it for every vendor.
+        const matchesSelectedService = await createSelectedNaicsMatcher(services, excludedServices);
         const checker = (vendor: Vendor) => {
-          return services.some(service =>
-            vendorProvidesService(vendor, service)
-          );
+          return vendorProvidesSelectedService(vendor, matchesSelectedService);
         }
         urlFilteredVendors = this.vendors.filter(checker);
       }
 
-      // Region filters include vendors that serve any country in the selected
-      // regions, vendors that name the region, and global vendors.
-      if (regions.length) {
-        const countryList = useLocationStore().countries.filter(country => regions.includes(country.region));
+      if (states.length) {
+        const districtList = locationStore.districts.filter(district => states.includes(district.state));
         const checker = (vendor: Vendor) => {
-          return regions.some(region => vendorServesRegion(vendor, region, countryList));
+          return states.some(state => vendorServesState(vendor, state, districtList));
         }
         urlFilteredVendors = urlFilteredVendors.filter(checker);
       }
 
-      // Country filters are narrower, but still include global vendors and
-      // region-wide vendors when they do not list countries individually.
-      if (countries.length) {
-        const countryList = useLocationStore().countries.filter(country => countries.includes(country.ISO3));
+      if (districts.length) {
+        const districtList = locationStore.districts.filter(district => districts.includes(district.geoid));
         const checker = (vendor: Vendor) => {
-          return countryList.some(country => vendorServesCountry(vendor, country));
+          return districtList.some(district => vendorServesDistrict(vendor, district));
         }
         urlFilteredVendors = urlFilteredVendors.filter(checker);
       }
@@ -93,25 +90,22 @@ export const useVendorStore = defineStore('vendorStore', {
     toggleVendors() {
       this.show = !this.show;
     },
-    regionVendorCount(region: string) {
-      // Tooltip counts should reflect the already-filtered vendor list so map
-      // counts stay aligned with the visible vendor panel.
-      const countryList = useLocationStore().countries.filter(country => region === country.region);
+    stateVendorCount(state: string) {
+      const districtList = useLocationStore().districts.filter(district => state === district.state);
       const checker = (vendor: Vendor) => {
-        return vendorServesRegion(vendor, region, countryList);
+        return vendorServesState(vendor, state, districtList);
       }
-      if (!region.includes('Global')) {
+      if (!state.includes('Global')) {
         return this.filteredVendors.filter(checker).length;
       }
       else {
-        return this.filteredVendors.filter(vendor => vendor.region.includes('Global')).length;
+        return this.filteredVendors.filter(vendor => vendor.state.includes('Global')).length;
       }
     },
-    countryVendorCount(ISO3: string) {
-      // Country counts are computed without mutating the country store.
-      const country = useLocationStore().countries.find(ctr => ctr.ISO3 === ISO3);
-      if (country) {
-        return this.filteredVendors.filter(vendor => vendorServesCountry(vendor, country)).length;
+    districtVendorCount(geoid: string) {
+      const district = useLocationStore().districts.find(district => district.geoid === geoid);
+      if (district) {
+        return this.filteredVendors.filter(vendor => vendorServesDistrict(vendor, district)).length;
       }
     }
   }

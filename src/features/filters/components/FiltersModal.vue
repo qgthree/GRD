@@ -1,52 +1,53 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import { useFiltersStore } from '@/stores/filtersStore'
 import ModalFrame from '@/components/ModalFrame.vue'
-import ResizeTransition from '@/components/ResizeTransition.vue'
 import close from '@/assets/images/close.svg'
 import FilterTypeSelector from '@/features/filters/components/FilterTypeSelector.vue'
-import LocationFilterPanel from '@/features/filters/components/LocationFilterPanel.vue'
-import ServiceFilterPanel from '@/features/filters/components/ServiceFilterPanel.vue'
 
 const filtersStore = useFiltersStore()
+// Panels carry the heavier location and NAICS selector code. Load only the
+// active panel after the modal needs it.
+const LocationFilterPanel = defineAsyncComponent(() => import('@/features/filters/components/LocationFilterPanel.vue'))
+const ServiceFilterPanel = defineAsyncComponent(() => import('@/features/filters/components/ServiceFilterPanel.vue'))
 </script>
 
 <template>
   <ModalFrame
     :show="filtersStore.status !== 'hidden'"
     title="Filters"
-    max-width="600px"
+    max-width="900px"
     @close-modal="filtersStore.toggleFiltersView('hidden')"
   >
     <template #header="{ close: closeModal }">
       <div class="component_header">
-        <div class="header-left">Filters</div>
-        <div class="header-right">
-          <img :src="close" alt="" @click="closeModal" />
-        </div>
+        <span class="header-left">Filters</span>
+        <button class="header-right icon-button" type="button" aria-label="Close filters" @click="closeModal">
+          <img :src="close" alt="" />
+        </button>
       </div>
     </template>
 
-    <div class="filters-modal">
-      <FilterTypeSelector />
-      <div class="filter-panel-area">
-        <ResizeTransition v-if="filtersStore.status === 'location'" :duration="280">
-          <LocationFilterPanel />
-        </ResizeTransition>
-        <ServiceFilterPanel v-else />
+    <template #before-content>
+      <div class="filter-tabs-area">
+        <FilterTypeSelector />
       </div>
+    </template>
+
+    <div class="filter-panel-area">
+      <LocationFilterPanel v-if="filtersStore.status === 'location'" />
+      <ServiceFilterPanel v-else />
     </div>
   </ModalFrame>
 </template>
 
 <style scoped>
-.filters-modal {
-  max-height: calc(100vh - 104px);
-  width: 100%;
-  padding: 30px;
-  background-color: #fff;
+.filter-tabs-area {
+  padding: 30px 30px 0;
 }
 .filter-panel-area {
-  padding: 20px 0px;
-  background-color: #fff;
+  display: grid;
+  width: 100%;
+  padding: 30px;
 }
 </style>

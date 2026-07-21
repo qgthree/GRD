@@ -1,30 +1,31 @@
 import type L from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 
-// Region names come from the BHA map data. The string fallback keeps the app
-// tolerant if future data adds a region before this type is updated.
-export type RegionName = 'Africa' | 'ALAC' | 'MENAE' | string
+// State names come from TIGERweb. The string fallback keeps the app tolerant if
+// the source changes its labels.
+export type StateName = string
 
-// The region GeoJSON only needs the BHA region identifier for current styling
-// and routing behavior.
-export interface RegionProperties {
-  BHA_REGION: RegionName
+export interface StateProperties {
+  name: StateName
+  stateCode: string
+  stateAbbreviation: string
+  latCent: number
+  longCent: number
 }
 
-// Country features contain many more fields in the source file; this type names
-// only the properties the app currently reads.
-export interface CountryProperties {
-  BHA_Reg: RegionName
-  ISO3: string
-  USG_Name: string
-  LAT_CENT: number
-  LONG_CENT: number
+export interface DistrictProperties {
+  stateName: StateName
+  geoid: string
+  name: string
+  latCent: number
+  longCent: number
+  districtCode: string
 }
 
 export type MapFeature<TProperties> = Feature<Geometry, TProperties>
 
-export type RegionFeature = MapFeature<RegionProperties>
-export type CountryFeature = MapFeature<CountryProperties>
+export type StateFeature = MapFeature<StateProperties>
+export type DistrictFeature = MapFeature<DistrictProperties>
 
 // Local JSON and future API responses should both satisfy this shape.
 export interface MapFeatureCollection<TFeature> {
@@ -34,7 +35,7 @@ export interface MapFeatureCollection<TFeature> {
 // These settings are still stored in Pinia, but the explicit type lets map
 // helpers work without importing the store directly.
 export interface BoundaryStyleSetting {
-  name: RegionName
+  name: StateName
   color: string
   center: number[]
   zoom: number
@@ -42,7 +43,6 @@ export interface BoundaryStyleSetting {
 
 export interface MapStyleSettings {
   weight: number
-  heavyOpacity: number
   mediumOpacity: number
   lightOpacity: number
 }
@@ -54,13 +54,13 @@ export interface LeafSettings {
   minZoom: number
   maxZoom: number
   features: MapStyleSettings
-  region: BoundaryStyleSetting[]
+  boundaryStyles: BoundaryStyleSetting[]
   mapOptions: L.MapOptions
 }
 
 export type BoundarySelection =
   | { type: 'none' }
-  | { type: 'parent-list'; ids: string[] }
-  | { type: 'parent'; id: string }
-  | { type: 'child-list'; ids: string[] }
-  | { type: 'child'; id: string }
+  | { type: 'state-list'; ids: string[] }
+  | { type: 'state'; id: string }
+  | { type: 'district-list'; ids: string[] }
+  | { type: 'district'; id: string }

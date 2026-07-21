@@ -1,8 +1,8 @@
 .component_header {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr max-content;
   align-items: center;
-  background-color: #651D32;
+  background-color: rgb(83, 65, 152);
   color: #fff;
   padding: 12px 15px;
   text-align: left;
@@ -19,9 +19,35 @@
   justify-content: left;
 }
 .header-right {
-  justify-content: right;
   display: inline-flex;
+  justify-self: end;
 }
-.header-right img {
+.icon-button {
+  appearance: none;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+}
+.icon-button img {
   cursor: pointer;
+}
+.filter-bucket-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-selected-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background-color: #dedee1;
+  color: #1f1f1f;
+  font-size: 13px;
+  line-height: 1;
 }

@@ -1,9 +1,11 @@
+import type { LocationQuery } from 'vue-router';
+
 export interface Vendor {
   id: number;
   company_name: string;
-  region: string[];
+  state: string[];
   subsectors: string[];
-  country_location: string[];
+  district_location: string[];
   'city_/_subsidiary_location': string;
   'primary_contact(s)'?: string;
   phone?: string;
@@ -13,9 +15,5 @@ export interface Vendor {
   isVisible: boolean;
 }
 
-// These fields mirror the current URL query filters.
-export interface VendorQuery {
-  services?: string | string[] | null;
-  region?: string | string[] | null;
-  country?: string | string[] | null;
-}
+// Vendor filters are read from the route query, including compact and legacy keys.
+export type VendorQuery = LocationQuery;

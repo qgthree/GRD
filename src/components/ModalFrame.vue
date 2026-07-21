@@ -28,17 +28,10 @@
 
         <slot name="header" :close="() => emit('closeModal')" />
 
-        <div class="modal-layout" :class="`is-${backgroundPlacement}`">
-          <div
-            v-if="modalImage"
-            class="modal-media"
-            role="presentation"
-            :style="modalImageStyles"
-          ></div>
+        <slot name="before-content" />
 
-          <div class="modal-content">
-            <slot />
-          </div>
+        <div class="modal-content">
+          <slot />
         </div>
       </div>
     </div>
@@ -49,19 +42,14 @@
 import { computed, onBeforeUnmount, ref, useSlots } from 'vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 import { useFocusTrap } from '@/utils/focusTrap'
-import type { ModalBackgroundPlacement } from './modalTypes'
 
 const props = withDefaults(
   defineProps<{
     show: boolean
     title: string
-    modalImage?: string
-    backgroundPlacement?: ModalBackgroundPlacement
     maxWidth?: string
   }>(),
   {
-    modalImage: '',
-    backgroundPlacement: 'auto',
     maxWidth: '760px',
   },
 )
@@ -71,11 +59,6 @@ const emit = defineEmits<{
   (_e: 'afterLeave'): void
 }>()
 const slots = useSlots()
-
-// Template styles are computed here so callers can configure layout without receiving CSS control.
-const modalImageStyles = computed(() => ({
-  backgroundImage: props.modalImage ? `url("${props.modalImage}")` : undefined,
-}))
 
 // Pass width through CSS so layout rules can still clamp it responsively.
 const modalStyles = computed(() => ({
@@ -121,6 +104,8 @@ onBeforeUnmount(deactivate)
     width: min(var(--modal-max-width), 100%);
     min-width: min(360px, 100%);
     max-height: min(calc(100dvh - (var(--modal-block-space) * 2)), 720px);
+    display: flex;
+    flex-direction: column;
     background: #fff;
     color: #000;
     border-radius: 15px;
@@ -164,56 +149,11 @@ onBeforeUnmount(deactivate)
       }
     }
 
-    .modal-layout {
-      max-height: inherit;
-      display: flex;
-      flex-direction: column;
-
-      &.is-auto,
-      &.is-left,
-      &.is-right {
-        flex-direction: row;
-      }
-
-      &.is-right {
-        flex-direction: row-reverse;
-      }
-
-      .modal-media {
-        flex: 0 0 auto;
-        min-height: 120px;
-        background-position: center;
-        background-size: cover;
-      }
-
-      &.is-top .modal-media {
-        flex-basis: 33.333%;
-      }
-
-      &.is-auto .modal-media,
-      &.is-right .modal-media,
-      &.is-left .modal-media {
-        flex-basis: 33.333%;
-        min-width: 180px;
-        min-height: auto;
-      }
-
-      .modal-content {
-        flex: 1 1 auto;
-        min-width: 0;
-        min-height: 0;
-        overflow: auto;
-      }
-    }
-  }
-}
-
-@media (orientation: portrait) {
-  .modal-overlay {
-    .modal-layout {
-      &.is-auto {
-        flex-direction: row-reverse;
-      }
+    .modal-content {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
     }
   }
 }
@@ -223,25 +163,6 @@ onBeforeUnmount(deactivate)
     --modal-block-space: 32px;
 
     padding-inline: 12px;
-
-    .modal-layout {
-      &.is-auto,
-      &.is-left,
-      &.is-right {
-        flex-direction: row;
-      }
-
-      &.is-auto,
-      &.is-right {
-        flex-direction: row-reverse;
-      }
-
-      &.is-auto .modal-media,
-      &.is-right .modal-media,
-      &.is-left .modal-media {
-        min-width: 96px;
-      }
-    }
   }
 }
 </style>

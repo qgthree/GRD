@@ -1,47 +1,32 @@
 import type { LocationQuery } from 'vue-router'
 import type { BoundarySelection } from '@/features/map/types'
-
-interface BoundaryQueryKeys {
-  parentKey: string
-  childKey: string
-}
-
-export const mapBoundaryQueryKeys = {
-  parentKey: 'region',
-  childKey: 'country'
-}
-
-// Vue Router query values can be strings, arrays, nulls, or undefined.
-// The map only needs a clean list of selected ids/names.
-const queryList = (value: LocationQuery[string]) => {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean) as string[]
-  }
-
-  return value ? value.split(',').filter(Boolean) : []
-}
+import type { District, State } from '@/features/locations/types'
+import {
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery
+} from '@/features/locations/utils/locationQuery'
 
 export const getBoundarySelection = (
   query: LocationQuery,
-  keys: BoundaryQueryKeys
+  locations: { states: State[]; districts: District[] }
 ): BoundarySelection => {
-  const parentIds = queryList(query[keys.parentKey])
-  const childIds = queryList(query[keys.childKey])
+  const stateIds = selectedStateNamesFromQuery(query, locations.states)
+  const districtIds = selectedDistrictGeoidsFromQuery(query, locations.districts)
 
-  if (parentIds.length > 1) {
-    return { type: 'parent-list', ids: parentIds }
+  if (stateIds.length > 1) {
+    return { type: 'state-list', ids: stateIds }
   }
 
-  if (parentIds.length === 1) {
-    return { type: 'parent', id: parentIds[0] }
+  if (stateIds.length === 1) {
+    return { type: 'state', id: stateIds[0] }
   }
 
-  if (childIds.length > 1) {
-    return { type: 'child-list', ids: childIds }
+  if (districtIds.length > 1) {
+    return { type: 'district-list', ids: districtIds }
   }
 
-  if (childIds.length === 1) {
-    return { type: 'child', id: childIds[0] }
+  if (districtIds.length === 1) {
+    return { type: 'district', id: districtIds[0] }
   }
 
   return { type: 'none' }

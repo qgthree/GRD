@@ -5,8 +5,8 @@ import type { Vendor } from '@/features/vendors/types'
 export const getVendors = async (): Promise<Vendor[]> => {
   return localVendors.map((vendor) => ({
     ...vendor,
-    region: [...vendor.region],
+    state: [...vendor.state],
     subsectors: [...vendor.subsectors],
-    country_location: [...vendor.country_location]
+    district_location: [...vendor.district_location]
   }))
 }

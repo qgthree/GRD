@@ -1,16 +1,17 @@
 import { defineStore } from 'pinia';
 
 type FilterStatus = 'hidden' | 'location' | 'sector'
-type LocationFilterMode = 'region' | 'country'
+type LocationFilterMode = 'state' | 'district'
 
 // Tracks which filter panel should be visible. The string values map directly to
 // the current filter UI modes.
 export const useFiltersStore = defineStore('filterStore', {
   state: () => ({
     status: 'hidden' as FilterStatus,
-    locationMode: 'region' as LocationFilterMode,
-    collapsedCountryRegions: [] as string[],
-    countryRegionsHaveInitialized: false,
+    locationMode: 'state' as LocationFilterMode,
+    openNaicsBucketLevel: null as number | null,
+    collapsedDistrictStates: [] as string[],
+    districtStatesHaveInitialized: false,
     filterHistoryEntryPrepared: false
   }),
   actions: {
@@ -33,19 +34,25 @@ export const useFiltersStore = defineStore('filterStore', {
     setLocationMode(mode: LocationFilterMode) {
       this.locationMode = mode;
     },
-    initializeCollapsedCountryRegions(regions: string[]) {
-      if (this.countryRegionsHaveInitialized) return;
+    toggleNaicsBucket(level: number) {
+      this.openNaicsBucketLevel = this.openNaicsBucketLevel === level ? null : level;
+    },
+    isNaicsBucketOpen(level: number) {
+      return this.openNaicsBucketLevel === level;
+    },
+    initializeCollapsedDistrictStates(states: string[]) {
+      if (this.districtStatesHaveInitialized) return;
 
-      this.collapsedCountryRegions = regions;
-      this.countryRegionsHaveInitialized = true;
+      this.collapsedDistrictStates = states;
+      this.districtStatesHaveInitialized = true;
     },
-    toggleCountryRegion(region: string) {
-      this.collapsedCountryRegions = this.collapsedCountryRegions.includes(region)
-        ? this.collapsedCountryRegions.filter((collapsedRegion) => collapsedRegion !== region)
-        : [...this.collapsedCountryRegions, region];
+    toggleDistrictState(state: string) {
+      this.collapsedDistrictStates = this.collapsedDistrictStates.includes(state)
+        ? this.collapsedDistrictStates.filter((collapsedState) => collapsedState !== state)
+        : [...this.collapsedDistrictStates, state];
     },
-    isCountryRegionOpen(region: string) {
-      return !this.collapsedCountryRegions.includes(region);
+    isDistrictStateOpen(state: string) {
+      return !this.collapsedDistrictStates.includes(state);
     }
   }
 });

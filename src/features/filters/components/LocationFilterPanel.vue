@@ -1,48 +1,53 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import CollapseTransition from '@/components/CollapseTransition.vue'
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import { useLocationStore } from '@/stores/locationStore'
-import { useMapSettingsStore } from '@/stores/mapSettingsStore'
 import { useFiltersStore } from '@/stores/filtersStore'
-import type { Country } from '@/features/locations/types'
+import { selectedFilterQueryValues } from '@/utils/query'
+import type { District } from '@/features/locations/types'
+import {
+  districtQueryValue,
+  selectedDistrictGeoidsFromQuery,
+  selectedStateNamesFromQuery,
+  stateQueryValue
+} from '@/features/locations/utils/locationQuery'
+import { sortDistricts } from '@/features/locations/utils/districtSorting'
 
-type LocationFilterMode = 'region' | 'country'
-type CountryGroup = {
-  region: string
-  countries: Country[]
+type LocationFilterMode = 'state' | 'district'
+type DistrictGroup = {
+  state: string
+  districts: District[]
 }
 
 const locationStore = useLocationStore()
 const filtersStore = useFiltersStore()
-const { leafSettings } = useMapSettingsStore()
-const { route, selectedValues, toggleQueryValue, updateQuery } = useFilterQuery()
+const { route, toggleQueryValue, updateQuery } = useFilterQuery()
 
-const selectedRegions = selectedValues('region')
-const selectedCountries = selectedValues('country')
+const selectedStates = computed(() => selectedStateNamesFromQuery(route.query, locationStore.states))
+const selectedDistricts = computed(() => selectedDistrictGeoidsFromQuery(route.query, locationStore.districts))
 
-const regions = computed(() => leafSettings.region.map((region) => region.name))
-const countries = computed(() => {
-  const selectableRegions = new Set(regions.value)
+const states = computed(() => locationStore.states.map((state) => state.name))
+const districts = computed(() => {
+  const selectableStates = new Set(states.value)
 
-  return [...locationStore.countries]
-    .filter((country) => country.ISO3 && selectableRegions.has(country.region))
-    .sort((firstCountry, secondCountry) => firstCountry.name.localeCompare(secondCountry.name))
+  return sortDistricts(locationStore.districts
+    .filter((district) => district.geoid && selectableStates.has(district.state))
+  )
 })
-const countryGroups = computed<CountryGroup[]>(() => {
-  const groups = new Map<string, Country[]>()
+const districtGroups = computed<DistrictGroup[]>(() => {
+  const groups = new Map<string, District[]>()
 
-  countries.value.forEach((country) => {
-    const regionCountries = groups.get(country.region) ?? []
-    regionCountries.push(country)
-    groups.set(country.region, regionCountries)
+  districts.value.forEach((district) => {
+    const stateDistricts = groups.get(district.state) ?? []
+    stateDistricts.push(district)
+    groups.set(district.state, stateDistricts)
   })
 
   return [...groups.entries()]
-    .sort(([firstRegion], [secondRegion]) => firstRegion.localeCompare(secondRegion))
-    .map(([region, groupedCountries]) => ({
-      region,
-      countries: groupedCountries
+    .sort(([firstState], [secondState]) => firstState.localeCompare(secondState))
+    .map(([state, groupedDistricts]) => ({
+      state,
+      districts: groupedDistricts
     }))
 })
 
@@ -50,104 +55,97 @@ const setLocationMode = (mode: LocationFilterMode) => {
   filtersStore.setLocationMode(mode)
 
   updateQuery(
-    mode === 'region'
-      ? { country: undefined }
-      : { region: undefined }
+    mode === 'state'
+      ? { district: undefined }
+      : { state: undefined }
   )
 }
 
-const selectedCountryCountForRegion = (countries: Country[]) => {
-  return countries.filter((country) => selectedCountries.value.includes(country.ISO3)).length
+const selectedDistrictCountForState = (districts: District[]) => {
+  return districts.filter((district) => selectedDistricts.value.includes(district.geoid)).length
 }
 
-watch(countryGroups, (groups) => {
+watch(districtGroups, (groups) => {
   if (!groups.length) return
 
-  filtersStore.initializeCollapsedCountryRegions(groups.map((group) => group.region))
+  filtersStore.initializeCollapsedDistrictStates(groups.map((group) => group.state))
 }, { immediate: true })
 
-watch(() => [route.query.country, route.query.region], ([countryQuery, regionQuery]) => {
-  if (countryQuery) {
-    filtersStore.setLocationMode('country')
+watch(() => route.query, (query) => {
+  if (selectedFilterQueryValues(query, 'district').length) {
+    filtersStore.setLocationMode('district')
     return
   }
 
-  if (regionQuery) {
-    filtersStore.setLocationMode('region')
+  if (selectedFilterQueryValues(query, 'state').length) {
+    filtersStore.setLocationMode('state')
   }
 }, { immediate: true })
 
 onMounted(() => {
-  void locationStore.loadCountries()
+  void locationStore.loadDistricts()
 })
 </script>
 
 <template>
   <div id="locationTypeSelector">
     <button
-      class="selectorLeft"
-      :class="{ active: filtersStore.locationMode === 'region' }"
+      class="selector-option"
+      :class="{ active: filtersStore.locationMode === 'state' }"
       type="button"
-      @click="setLocationMode('region')">
-      Filter By Region
+      @click="setLocationMode('state')">
+      Filter By State
     </button>
-    <div class="selectorCenter">
-      <label class="switch">
-        <input
-          type="checkbox"
-          :checked="filtersStore.locationMode === 'country'"
-          @change="setLocationMode(filtersStore.locationMode === 'region' ? 'country' : 'region')" />
-        <span class="slider"></span>
-      </label>
-    </div>
+    <label class="switch selectorCenter">
+      <input
+        type="checkbox"
+        :checked="filtersStore.locationMode === 'district'"
+        @change="setLocationMode(filtersStore.locationMode === 'state' ? 'district' : 'state')" />
+      <span class="slider"></span>
+    </label>
     <button
-      class="selectorRight"
-      :class="{ active: filtersStore.locationMode === 'country' }"
+      class="selector-option"
+      :class="{ active: filtersStore.locationMode === 'district' }"
       type="button"
-      @click="setLocationMode('country')">
-      Filter By Country
+      @click="setLocationMode('district')">
+      Filter By District
     </button>
   </div>
 
-  <div v-if="filtersStore.locationMode === 'region'" class="region-option-group">
-    <div class="region-options">
-      <label class="filter-option" v-for="region in regions" :key="region">
-        <input
-          type="checkbox"
-          :checked="selectedRegions.includes(region)"
-          @change="toggleQueryValue('region', region)" />
-        <span>{{ region }}</span>
-      </label>
-    </div>
+  <div v-if="filtersStore.locationMode === 'state'" class="state-options">
+    <label class="filter-option" v-for="state in states" :key="state">
+      <input
+        type="checkbox"
+        :checked="selectedStates.includes(state)"
+        @change="toggleQueryValue('state', stateQueryValue(state, locationStore.states))" />
+      <span>{{ state }}</span>
+    </label>
   </div>
 
-  <div v-else class="country-groups">
-    <section class="country-region-group" v-for="group in countryGroups" :key="group.region">
+  <div v-else class="district-groups">
+    <section class="district-state-group" v-for="group in districtGroups" :key="group.state">
       <h3>
         <button
           type="button"
-          :aria-expanded="filtersStore.isCountryRegionOpen(group.region)"
-          @click="filtersStore.toggleCountryRegion(group.region)">
-          <span class="country-region-title">
-            <span>{{ group.region }}</span>
-            <span v-if="selectedCountryCountForRegion(group.countries)" class="selected-count">
-              {{ selectedCountryCountForRegion(group.countries) }}
+          :aria-expanded="filtersStore.isDistrictStateOpen(group.state)"
+          @click="filtersStore.toggleDistrictState(group.state)">
+          <span class="filter-bucket-title">
+            <span>{{ group.state }}</span>
+            <span v-if="selectedDistrictCountForState(group.districts)" class="filter-selected-count">
+              {{ selectedDistrictCountForState(group.districts) }}
             </span>
           </span>
-          <span aria-hidden="true">{{ filtersStore.isCountryRegionOpen(group.region) ? '−' : '+' }}</span>
         </button>
       </h3>
-      <CollapseTransition>
-        <div v-show="filtersStore.isCountryRegionOpen(group.region)" class="country-region-body filter-options">
-          <label class="filter-option" v-for="country in group.countries" :key="`${country.ISO3}-${country.name}`">
-            <input
-              type="checkbox"
-              :checked="selectedCountries.includes(country.ISO3)"
-              @change="toggleQueryValue('country', country.ISO3)" />
-            <span>{{ country.name }}</span>
-          </label>
-        </div>
-      </CollapseTransition>
+      <div v-if="filtersStore.isDistrictStateOpen(group.state)" class="filter-options">
+        <label class="filter-option" v-for="district in group.districts" :key="`${district.geoid}-${district.name}`">
+          <input
+            type="checkbox"
+            :checked="selectedDistricts.includes(district.geoid)"
+            @change="toggleQueryValue('district', districtQueryValue(district.geoid, locationStore.districts))" />
+          <span>{{ district.name }}</span>
+        </label>
+      </div>
     </section>
   </div>
 </template>
@@ -156,7 +154,8 @@ onMounted(() => {
 #locationTypeSelector {
   position: relative;
   display: grid;
-  grid-template-columns: 130px 70px 130px;
+  grid-template-columns: max-content 70px max-content;
+  gap: 10px;
   align-items: center;
   justify-content: start;
   margin: 20px 0;
@@ -174,45 +173,39 @@ onMounted(() => {
   color: inherit;
   font: inherit;
 }
-.selectorLeft,
-.selectorRight {
+.selector-option {
   justify-content: center;
 }
-#locationTypeSelector .selectorLeft.active,
-#locationTypeSelector .selectorRight.active {
+#locationTypeSelector .selector-option.active {
   cursor: default;
-  color: #651D32;
-  font-weight: 600;
+  color: rgb(83, 65, 152);
+  text-shadow: 0.35px 0 currentColor;
 }
-.country-groups,
-.region-options {
+.district-groups,
+.state-options {
   display: grid;
   gap: 12px;
 }
-.country-region-group,
-.region-option-group {
+.district-state-group,
+.state-options {
   background-color: #f4f4f5;
   border-radius: 10px;
   color: #000;
 }
-.country-region-group {
-  overflow: hidden;
-}
-.region-option-group {
+.state-options {
   padding: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.country-region-group h3 {
+.district-state-group h3 {
   margin-bottom: 0;
 }
-.country-region-group h3 button {
+.district-state-group h3 button {
   appearance: none;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
+  display: block;
   width: 100%;
   border: none;
   background: transparent;
-  color: #651D32;
+  color: #1f1f1f;
   cursor: pointer;
   font: inherit;
   font-size: 14px;
@@ -220,30 +213,10 @@ onMounted(() => {
   padding: 14px;
   text-align: left;
 }
-.country-region-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.selected-count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background-color: #651D32;
-  color: #fff;
-  font-size: 12px;
-  line-height: 1;
-  padding: 0 7px;
-}
 .filter-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px 18px;
-  padding: 2px 0 10px;
-}
-.country-region-body.filter-options {
   padding: 2px 14px 14px;
 }
 .filter-option {

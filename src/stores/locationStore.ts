@@ -1,28 +1,38 @@
 import { defineStore } from 'pinia';
-import { getCountries } from '@/features/locations/api/locationDataSource';
-import type { Country } from '@/features/locations/types';
+import { getDistricts, getStates } from '@/features/locations/api/locationDataSource';
+import type { District, State } from '@/features/locations/types';
 
 export const useLocationStore = defineStore('locationStore', {
   state: () => ({
-    countries: [] as Country[],
-    loading: false,
+    states: [] as State[],
+    districts: [] as District[],
     error: null as string | null
   }),
   actions: {
-    async loadCountries() {
-      if (this.countries.length || this.loading) return;
+    async loadStates() {
+      if (this.states.length) return;
 
-      this.loading = true;
       this.error = null;
 
       try {
-        this.countries = await getCountries();
+        this.states = await getStates();
       }
       catch (caughtError) {
-        this.error = caughtError instanceof Error ? caughtError.message : 'Unable to load countries';
+        this.error = caughtError instanceof Error ? caughtError.message : 'Unable to load states';
       }
-      finally {
-        this.loading = false;
+    },
+
+    async loadDistricts() {
+      if (this.districts.length) return;
+
+      this.error = null;
+
+      try {
+        this.states = await getStates();
+        this.districts = await getDistricts();
+      }
+      catch (caughtError) {
+        this.error = caughtError instanceof Error ? caughtError.message : 'Unable to load congressional districts';
       }
     }
   }

@@ -16,4 +16,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/tigerweb': {
+        target: 'https://tigerweb.geo.census.gov/arcgis',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/tigerweb/, '')
+      }
+    }
+  }
 })
