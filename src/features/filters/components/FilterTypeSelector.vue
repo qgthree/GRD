@@ -12,17 +12,17 @@ const { route, updateQuery } = useFilterQuery()
   <div id="filterSelector">
     <button
       class="filterType"
-      :class="{ active: filtersStore.status === 'location' }"
-      type="button"
-      @click="filtersStore.toggleFiltersView('location')">
-      Location
-    </button>
-    <button
-      class="filterType"
       :class="{ active: filtersStore.status === 'sector' }"
       type="button"
       @click="filtersStore.toggleFiltersView('sector')">
       Sector
+    </button>
+    <button
+      class="filterType"
+      :class="{ active: filtersStore.status === 'location' }"
+      type="button"
+      @click="filtersStore.toggleFiltersView('location')">
+      Location
     </button>
     <button
       class="clear-filters"

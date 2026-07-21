@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from "vue-router";
 import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useVendorStore } from '@/stores/vendorStore';
@@ -11,7 +11,7 @@ import {
   selectedDistrictGeoidsFromQuery,
   selectedStateNamesFromQuery
 } from '@/features/locations/utils/locationQuery';
-import { getNaicsLabel } from '@/features/naics/utils/naicsCodes';
+import { loadNaicsTitleMap } from '@/features/naics/api/naicsDataSource';
 import home0 from "@/assets/images/home_FILL0.svg";
 import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
@@ -28,17 +28,22 @@ const hasActiveFilters = computed(() => {
   return hasActiveFilterQuery(route.query);
 });
 
-const formatSummary = (items: string[], fallback: string) => {
+const formatSummary = (items: string[], fallback: string, conjunction = 'and') => {
   if (!items.length) return fallback;
   if (items.length === 1) return items[0];
 
-  return `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
+  if (items.length === 2) return `${items[0]} ${conjunction} ${items[1]}`;
+
+  return `${items.slice(0, -1).join(', ')}, ${conjunction} ${items.at(-1)}`;
 }
+
+const quoteSummaryItems = (items: string[]) => items.map((item) => `"${item}"`)
 
 const selectedStates = computed(() => selectedStateNamesFromQuery(route.query, locationStore.states));
 const selectedDistricts = computed(() => selectedDistrictGeoidsFromQuery(route.query, locationStore.districts));
 const selectedServices = computed(() => selectedFilterQueryValues(route.query, 'services'));
 const excludedServices = computed(() => selectedFilterQueryValues(route.query, 'servicesExclude'));
+const selectedSectorTitles = ref<string[]>([]);
 const hasLocationFilters = computed(() => selectedStates.value.length > 0 || selectedDistricts.value.length > 0);
 const hasSectorFilters = computed(() => selectedServices.value.length > 0 || excludedServices.value.length > 0);
 const formatDistrictCode = (districtCode: string) => {
@@ -66,9 +71,35 @@ const locationSummary = computed(() => {
   return formatSummary(selectedLocations, 'any location');
 });
 
-const sectorSummary = computed(() => {
-  return formatSummary(selectedServices.value.map(getNaicsLabel), 'any sector');
-});
+const sectorSummary = computed(() => formatSummary(quoteSummaryItems(selectedSectorTitles.value), 'any sector'));
+
+watch(selectedServices, async (services) => {
+  if (!services.length) {
+    selectedSectorTitles.value = [];
+    return;
+  }
+
+  const requestedServices = services.join(',');
+  const titleMap = await loadNaicsTitleMap(services);
+
+  // Route changes can happen while the async catalog import is in flight. Only
+  // apply titles if they still describe the current URL selection.
+  if (requestedServices !== selectedServices.value.join(',')) return;
+
+  selectedSectorTitles.value = services.map((service) => titleMap.get(service) ?? service);
+}, { immediate: true });
+
+const toggleVendors = () => {
+  vendorStore.toggleVendors()
+}
+
+const openSectorFilters = () => {
+  filtersStore.toggleFiltersView('sector')
+}
+
+const openLocationFilters = () => {
+  filtersStore.toggleFiltersView('location')
+}
 
 const clearLocationFilters = () => {
   void router.push({
@@ -107,37 +138,53 @@ const clearSectorFilters = () => {
           <img data-fill="1" :src="home1" alt="" />
         </router-link>
         <div class="nav_details">
-          <button class="nav_text_button" type="button" @click="vendorStore.toggleVendors()">Vendors</button>
-          <span> serving </span>
-          <span class="nav_filter_group">
-            <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('location')">
-              {{ locationSummary }}
-            </button>
-            <button
-              v-if="hasLocationFilters"
-              class="nav_clear_filter"
-              type="button"
-              aria-label="Clear location filter"
-              @click="clearLocationFilters">
-              <img :src="close" alt="" />
-            </button>
+          <span
+            class="nav_text_action"
+            role="button"
+            tabindex="0"
+            @click="toggleVendors"
+            @keydown.enter.prevent="toggleVendors"
+            @keydown.space.prevent="toggleVendors">
+            Vendors
           </span>
-          <span> in </span>
-          <span class="nav_filter_group">
-            <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('sector')">
-              {{ sectorSummary }}
-            </button>
-            <button
-              v-if="hasSectorFilters"
-              class="nav_clear_filter"
-              type="button"
-              aria-label="Clear sector filter"
-              @click="clearSectorFilters">
-              <img :src="close" alt="" />
-            </button>
+          <span class="nav_connector"> for </span>
+          <span
+            class="nav_text_action"
+            role="button"
+            tabindex="0"
+            @click="openSectorFilters"
+            @keydown.enter.prevent="openSectorFilters"
+            @keydown.space.prevent="openSectorFilters">
+            {{ sectorSummary }}
           </span>
+          <button
+            v-if="hasSectorFilters"
+            class="nav_clear_filter"
+            type="button"
+            aria-label="Clear sector filter"
+            @click="clearSectorFilters">
+            <img :src="close" alt="" />
+          </button>
+          <span class="nav_connector"> across </span>
+          <span
+            class="nav_text_action"
+            role="button"
+            tabindex="0"
+            @click="openLocationFilters"
+            @keydown.enter.prevent="openLocationFilters"
+            @keydown.space.prevent="openLocationFilters">
+            {{ locationSummary }}
+          </span>
+          <button
+            v-if="hasLocationFilters"
+            class="nav_clear_filter"
+            type="button"
+            aria-label="Clear location filter"
+            @click="clearLocationFilters">
+            <img :src="close" alt="" />
+          </button>
         </div>
-        <button class="nav_img" type="button" aria-label="Open filters" @click="filtersStore.toggleFiltersView('location')">
+        <button class="nav_img" type="button" aria-label="Open filters" @click="openSectorFilters">
           <img data-fill="0" :src="filters0" alt="" />
           <img data-fill="1" :src="filters1" alt="" />
         </button>
@@ -158,17 +205,16 @@ const clearSectorFilters = () => {
 }
 nav {
   display: grid;
-  grid-template-columns: 50px max-content 50px;
+  grid-template-columns: 54px minmax(0, 1fr) 54px;
   align-items: center;
-  width: fit-content;
-  max-width: calc(100vw - 40px);
+  width: max-content;
+  max-width: min(850px, calc(100vw - 60px));
 }
 .nav_shell {
   border-radius: 6px;
-  max-width: calc(100vw - 40px);
   background-color: #fff;
   color: #1f1f1f;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 400;
   z-index: 500;
   text-align: center;
@@ -179,13 +225,15 @@ nav {
   border: 0;
   display: flex;
   justify-content: center;
-  height: 52px;
+  height: 56px;
   padding: 16px 0px;
-  width: 50px;
+  width: 54px;
   background: transparent;
   cursor: pointer;
 }
 .nav_img img {
+  width: 24px;
+  height: 24px;
   filter: brightness(0) saturate(100%) invert(11%) sepia(1%) saturate(0%) hue-rotate(319deg) brightness(94%) contrast(90%);
 }
 .nav_img img[data-fill="0"],
@@ -197,49 +245,55 @@ nav {
   display: none;
 }
 .nav_details {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: max-content;
-  max-width: calc(100vw - 140px);
+  display: block;
+  min-width: 0;
   padding: 15px 10px;
   margin: 0px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
-.nav_filter_group {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.nav_text_button {
-  appearance: none;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
+.nav_text_action {
+  display: inline;
+  color: var(--color-purple);
   cursor: pointer;
+}
+.nav_text_action:focus-visible {
+  outline: 2px solid var(--color-purple);
+  outline-offset: 2px;
+}
+.nav_connector {
+  color: rgba(0, 0, 0, 0.5);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav_text_action:hover {
+    text-decoration: underline;
+  }
 }
 .nav_clear_filter {
   appearance: none;
+  position: relative;
   border: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   width: 18px;
   height: 18px;
+  margin-left: 5px;
   border-radius: 999px;
   background: #dedee1;
   color: #1f1f1f;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
-  line-height: 1;
+  line-height: 18px;
+  vertical-align: -3px;
 }
 .nav_clear_filter img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: block;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
   filter: brightness(0) saturate(100%) invert(11%) sepia(1%) saturate(0%) hue-rotate(319deg) brightness(94%) contrast(90%);
 }
 </style>

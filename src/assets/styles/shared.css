@@ -1,6 +1,6 @@
 .component_header {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr max-content;
   align-items: center;
   background-color: rgb(83, 65, 152);
   color: #fff;
@@ -19,12 +19,15 @@
   justify-content: left;
 }
 .header-right {
-  justify-content: right;
   display: inline-flex;
+  justify-self: end;
 }
 .icon-button {
   appearance: none;
   border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   background: transparent;
 }

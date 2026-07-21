@@ -8,10 +8,11 @@ import {
   selectedStateNamesFromQuery
 } from '@/features/locations/utils/locationQuery';
 import {
-  vendorProvidesService,
+  vendorProvidesSelectedService,
   vendorServesDistrict,
   vendorServesState
 } from '@/features/vendors/utils/vendorCoverage';
+import { createSelectedNaicsMatcher } from '@/features/naics/api/naicsDataSource';
 
 export const useVendorStore = defineStore('vendorStore', {
   state: () => ({
@@ -20,7 +21,9 @@ export const useVendorStore = defineStore('vendorStore', {
     filteredVendors: [] as Vendor[],
     loading: false,
     error: null as string | null,
-    show: true
+    // Keep the list closed on initial map load so its component and label
+    // hydration work are deferred until the user asks to inspect vendors.
+    show: false
   }),
   actions: {
     async loadVendors() {
@@ -57,10 +60,11 @@ export const useVendorStore = defineStore('vendorStore', {
         urlFilteredVendors = this.vendors;
       }
       else {
+        // Sector filtering is the one initial-route case that truly needs the
+        // NAICS catalog. Build the matcher once, then reuse it for every vendor.
+        const matchesSelectedService = await createSelectedNaicsMatcher(services, excludedServices);
         const checker = (vendor: Vendor) => {
-          return services.some(service =>
-            vendorProvidesService(vendor, service, excludedServices)
-          );
+          return vendorProvidesSelectedService(vendor, matchesSelectedService);
         }
         urlFilteredVendors = this.vendors.filter(checker);
       }

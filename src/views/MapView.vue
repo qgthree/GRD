@@ -3,14 +3,16 @@ import Map from '@/features/map/components/Map.vue'
 import Nav from '@/components/Nav.vue'
 import Filters from '@/features/filters/components/FiltersModal.vue'
 import WorldLegend from "@/features/map/components/WorldLegend.vue";
-import VendorList from '@/features/vendors/components/VendorList.vue';
 import { useVendorStore } from '@/stores/vendorStore';
-import { computed, onMounted, watch } from "vue";
+import { computed, defineAsyncComponent, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import spinner from "@/assets/images/infinite-spinner.svg";
 
 const route = useRoute();
 const vendorStore = useVendorStore();
+// The vendor list starts closed, so keep its component code out of the initial
+// map bundle until the nav opens it.
+const VendorList = defineAsyncComponent(() => import('@/features/vendors/components/VendorList.vue'));
 const isVendorDataReady = computed(() => Boolean(vendorStore.vendors.length));
 const shouldShowLegend = computed(() => isVendorDataReady.value);
 

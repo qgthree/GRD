@@ -1,11 +1,8 @@
 import type { District } from '@/features/locations/types'
 import type { Vendor } from '@/features/vendors/types'
-import { selectedNaicsCodeMatches } from '@/features/naics/utils/naicsCodes'
 
-export const vendorProvidesService = (vendor: Vendor, service: string, excludedServices: string[] = []) => {
-  return vendor.subsectors.some((vendorService) => {
-    return selectedNaicsCodeMatches(vendorService, [service], excludedServices)
-  })
+export const vendorProvidesSelectedService = (vendor: Vendor, matchesSelectedService: (code: string) => boolean) => {
+  return vendor.subsectors.some(matchesSelectedService)
 }
 
 // A vendor can serve a district directly, globally, or indirectly through an

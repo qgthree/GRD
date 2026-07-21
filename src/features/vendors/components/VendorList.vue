@@ -5,9 +5,8 @@ import { useVendorStore } from '@/stores/vendorStore';
 import { useLocationStore } from '@/stores/locationStore';
 import AppLink from '@/components/AppLink.vue'
 import ResizeTransition from '@/components/ResizeTransition.vue'
-import { formatServiceName } from '@/features/vendors/utils/vendorFormatters'
 import { sortDistricts } from '@/features/locations/utils/districtSorting'
-import { getNaicsLabel } from '@/features/naics/utils/naicsCodes'
+import { loadNaicsLabelMap } from '@/features/naics/api/naicsDataSource'
 import close from "@/assets/images/close.svg";
 
 // The store owns URL-level filtering; this component adds only local text search
@@ -15,6 +14,8 @@ import close from "@/assets/images/close.svg";
 const vendorStore = useVendorStore();
 const { filteredVendors } = storeToRefs(vendorStore);
 const districts = useLocationStore().districts;
+const serviceLabels = ref(new Map<string, string>());
+const loadingServiceLabelCodes = new Set<string>();
 
 const formatVendorDistricts = (districtIds: string[]) => {
   const requestedDistricts = new Set(districtIds)
@@ -32,8 +33,29 @@ const formatVendorDistricts = (districtIds: string[]) => {
 
 // This model is local to the input below and narrows the already route-filtered
 // vendor results.
-let vendorSearch = defineModel<string>({ default: '' });
-let searchFilteredVendors = computed(() => {
+const vendorSearch = defineModel<string>({ default: '' });
+const ensureServiceLabels = async (codes: string[]) => {
+  const missingCodes = [...new Set(codes)].filter((code) => {
+    return !serviceLabels.value.has(code) && !loadingServiceLabelCodes.has(code)
+  })
+  if (!missingCodes.length) return
+
+  missingCodes.forEach((code) => loadingServiceLabelCodes.add(code))
+
+  try {
+    const loadedLabels = await loadNaicsLabelMap(missingCodes)
+    serviceLabels.value = new Map([...serviceLabels.value, ...loadedLabels])
+  }
+  finally {
+    missingCodes.forEach((code) => loadingServiceLabelCodes.delete(code))
+  }
+}
+
+const formatServiceName = (service: string) => {
+  return serviceLabels.value.get(service) ?? service
+}
+
+const searchFilteredVendors = computed(() => {
   if (!vendorSearch.value) {
     return filteredVendors.value;
   }
@@ -41,7 +63,7 @@ let searchFilteredVendors = computed(() => {
     let search = vendorSearch.value.toLowerCase();
     return (
       vendor.company_name.toLowerCase().includes(search) ||
-      vendor.subsectors && vendor.subsectors.map(getNaicsLabel).join(',').toLowerCase().includes(search) ||
+      vendor.subsectors && vendor.subsectors.map(formatServiceName).join(',').toLowerCase().includes(search) ||
       vendor.email && vendor.email.toLowerCase().includes(search) ||
       vendor['primary_contact(s)'] && vendor['primary_contact(s)'].toLowerCase().includes(search) ||
       vendor.phone && vendor.phone.toLowerCase().includes(search) ||
@@ -69,8 +91,19 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
   }
   else if (vendor) {
     vendor.isVisible = !vendor.isVisible;
+    if (vendor.isVisible) {
+      void ensureServiceLabels(vendor.subsectors);
+    }
   }
 }
+
+watch(vendorSearch, (search) => {
+  if (!search) return
+
+  // Search should include NAICS titles, but only after the user searches. Until
+  // then, a closed or idle vendor list does not need the full code catalog.
+  void ensureServiceLabels(filteredVendors.value.flatMap((vendor) => vendor.subsectors))
+})
 
 </script>
 
@@ -93,7 +126,7 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
             <div class="list-data list-data_title-wrapper">
               <span class="list-data_title">{{ vendor.company_name }}</span><div class="utilized list-data_item" v-if="vendor.previously_used">utilized</div><div v-if="vendor.state.includes('Global')" class="global list-data_item">global</div>
             </div>
-            <div v-show="vendor.isVisible" class="list-data_details">
+            <div v-if="vendor.isVisible" class="list-data_details">
               <div class="list-data">
                 <span class="list-data_label">
                   Services:

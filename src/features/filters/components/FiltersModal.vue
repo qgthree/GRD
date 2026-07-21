@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import { useFiltersStore } from '@/stores/filtersStore'
 import ModalFrame from '@/components/ModalFrame.vue'
 import close from '@/assets/images/close.svg'
 import FilterTypeSelector from '@/features/filters/components/FilterTypeSelector.vue'
-import LocationFilterPanel from '@/features/filters/components/LocationFilterPanel.vue'
-import ServiceFilterPanel from '@/features/filters/components/ServiceFilterPanel.vue'
 
 const filtersStore = useFiltersStore()
+// Panels carry the heavier location and NAICS selector code. Load only the
+// active panel after the modal needs it.
+const LocationFilterPanel = defineAsyncComponent(() => import('@/features/filters/components/LocationFilterPanel.vue'))
+const ServiceFilterPanel = defineAsyncComponent(() => import('@/features/filters/components/ServiceFilterPanel.vue'))
 </script>
 
 <template>

@@ -83,8 +83,8 @@ const hasSectorFilter = computed(() => selectedFilterQueryValues(route.query, 's
   font-size: 14px;
 }
 .component_header {
+  display: block;
   background-color: rgb(83, 65, 152);
-  grid-template-columns: 1fr;
   margin: 0;
 }
 .legend-state {
