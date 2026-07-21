@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import {
   isNaicsCodeChecked,
@@ -52,6 +52,42 @@ const toggleNaicsCode = (code: NaicsCode) => {
   updateServices(nextSelection.selectedCodes, nextSelection.excludedCodes)
 }
 
+const scrollBucketToTop = async (heading: HTMLElement) => {
+  // Bucket contents scroll in the modal body, so align the opened bucket with
+  // that container instead of the page.
+  const scrollContainer = heading.closest<HTMLElement>('.modal-content')
+  const bucket = heading.closest<HTMLElement>('.naics-bucket')
+
+  if (!scrollContainer || !bucket) return
+
+  await nextTick()
+
+  const containerBounds = scrollContainer.getBoundingClientRect()
+  const bucketBounds = bucket.getBoundingClientRect()
+
+  scrollContainer.scrollTo({
+    top: scrollContainer.scrollTop + bucketBounds.top - containerBounds.top,
+    behavior: 'auto'
+  })
+}
+
+const toggleNaicsBucket = (bucket: NaicsBucket, event: MouseEvent) => {
+  const isOpening = !filtersStore.isNaicsBucketOpen(bucket.level)
+  const currentBucketIndex = naicsBuckets.findIndex((naicsBucket) => naicsBucket.level === bucket.level)
+  const openBucketIndex = naicsBuckets.findIndex((naicsBucket) => (
+    naicsBucket.level === filtersStore.openNaicsBucketLevel
+  ))
+  // When a bucket above the clicked one collapses, the clicked heading can move
+  // out of view. Jump only for that accordion-specific case.
+  const shouldJumpToTop = isOpening && openBucketIndex > -1 && openBucketIndex < currentBucketIndex
+
+  filtersStore.toggleNaicsBucket(bucket.level)
+
+  if (shouldJumpToTop) {
+    void scrollBucketToTop(event.currentTarget as HTMLElement)
+  }
+}
+
 </script>
 
 <template>
@@ -65,7 +101,7 @@ const toggleNaicsCode = (code: NaicsCode) => {
         class="naics-bucket-heading"
         type="button"
         :aria-expanded="filtersStore.isNaicsBucketOpen(bucket.level)"
-        @click="filtersStore.toggleNaicsBucket(bucket.level)"
+        @click="toggleNaicsBucket(bucket, $event)"
       >
         <span class="filter-bucket-title">
           <span>{{ bucket.title }}</span>
@@ -111,7 +147,7 @@ const toggleNaicsCode = (code: NaicsCode) => {
   width: 100%;
   padding: 14px;
   background: transparent;
-  color: #651D32;
+  color: #1f1f1f;
   cursor: pointer;
   font: inherit;
   font-weight: 600;
@@ -129,7 +165,6 @@ const toggleNaicsCode = (code: NaicsCode) => {
   padding: 2px 14px 14px;
 }
 .filter-option {
-  color: #111;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;
@@ -142,7 +177,7 @@ const toggleNaicsCode = (code: NaicsCode) => {
   text-align: left;
 }
 .filter-option.implied {
-  color: #651D32;
+  color: rgb(83, 65, 152);
   font-weight: 400;
 }
 </style>

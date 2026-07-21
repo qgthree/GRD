@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import CollapseTransition from '@/components/CollapseTransition.vue'
 import { useFilterQuery } from '@/features/filters/composables/useFilterQuery'
 import { useLocationStore } from '@/stores/locationStore'
 import { useFiltersStore } from '@/stores/filtersStore'
@@ -91,7 +90,7 @@ onMounted(() => {
 <template>
   <div id="locationTypeSelector">
     <button
-      class="selectorLeft"
+      class="selector-option"
       :class="{ active: filtersStore.locationMode === 'state' }"
       type="button"
       @click="setLocationMode('state')">
@@ -105,7 +104,7 @@ onMounted(() => {
       <span class="slider"></span>
     </label>
     <button
-      class="selectorRight"
+      class="selector-option"
       :class="{ active: filtersStore.locationMode === 'district' }"
       type="button"
       @click="setLocationMode('district')">
@@ -136,20 +135,17 @@ onMounted(() => {
               {{ selectedDistrictCountForState(group.districts) }}
             </span>
           </span>
-          <span aria-hidden="true">{{ filtersStore.isDistrictStateOpen(group.state) ? '−' : '+' }}</span>
         </button>
       </h3>
-      <CollapseTransition>
-        <div v-show="filtersStore.isDistrictStateOpen(group.state)" class="district-state-body filter-options">
-          <label class="filter-option" v-for="district in group.districts" :key="`${district.geoid}-${district.name}`">
-            <input
-              type="checkbox"
-              :checked="selectedDistricts.includes(district.geoid)"
-              @change="toggleQueryValue('district', districtQueryValue(district.geoid, locationStore.districts))" />
-            <span>{{ district.name }}</span>
-          </label>
-        </div>
-      </CollapseTransition>
+      <div v-if="filtersStore.isDistrictStateOpen(group.state)" class="filter-options">
+        <label class="filter-option" v-for="district in group.districts" :key="`${district.geoid}-${district.name}`">
+          <input
+            type="checkbox"
+            :checked="selectedDistricts.includes(district.geoid)"
+            @change="toggleQueryValue('district', districtQueryValue(district.geoid, locationStore.districts))" />
+          <span>{{ district.name }}</span>
+        </label>
+      </div>
     </section>
   </div>
 </template>
@@ -158,7 +154,8 @@ onMounted(() => {
 #locationTypeSelector {
   position: relative;
   display: grid;
-  grid-template-columns: 130px 70px 130px;
+  grid-template-columns: max-content 70px max-content;
+  gap: 10px;
   align-items: center;
   justify-content: start;
   margin: 20px 0;
@@ -176,15 +173,13 @@ onMounted(() => {
   color: inherit;
   font: inherit;
 }
-.selectorLeft,
-.selectorRight {
+.selector-option {
   justify-content: center;
 }
-#locationTypeSelector .selectorLeft.active,
-#locationTypeSelector .selectorRight.active {
+#locationTypeSelector .selector-option.active {
   cursor: default;
-  color: #651D32;
-  font-weight: 600;
+  color: rgb(83, 65, 152);
+  text-shadow: 0.35px 0 currentColor;
 }
 .district-groups,
 .state-options {
@@ -197,9 +192,6 @@ onMounted(() => {
   border-radius: 10px;
   color: #000;
 }
-.district-state-group {
-  overflow: hidden;
-}
 .state-options {
   padding: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -209,13 +201,11 @@ onMounted(() => {
 }
 .district-state-group h3 button {
   appearance: none;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
+  display: block;
   width: 100%;
   border: none;
   background: transparent;
-  color: #651D32;
+  color: #1f1f1f;
   cursor: pointer;
   font: inherit;
   font-size: 14px;
@@ -227,13 +217,9 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px 18px;
-  padding: 2px 0 10px;
-}
-.district-state-body.filter-options {
   padding: 2px 14px 14px;
 }
 .filter-option {
-  color: #111;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;

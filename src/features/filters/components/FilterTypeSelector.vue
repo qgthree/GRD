@@ -22,7 +22,7 @@ const { route, updateQuery } = useFilterQuery()
       :class="{ active: filtersStore.status === 'sector' }"
       type="button"
       @click="filtersStore.toggleFiltersView('sector')">
-      Sector (NAICS)
+      Sector
     </button>
     <button
       class="clear-filters"
@@ -50,7 +50,7 @@ const { route, updateQuery } = useFilterQuery()
   display: inline-flex;
   position: relative;
   background: transparent;
-  color: inherit;
+  color: rgba(0, 0, 0, 0.58);
   padding: 5px 0px 5px 0px;
   font-size: 14px;
   font-weight: 300;
@@ -64,7 +64,7 @@ const { route, updateQuery } = useFilterQuery()
   width: 100%;
   height: 1px;
   bottom: -1px;
-  background-color: #651D32;
+  background-color: rgb(83, 65, 152);
   visibility: hidden;
   -webkit-transform: scaleX(0);
   transform: scaleX(0);
@@ -73,7 +73,7 @@ const { route, updateQuery } = useFilterQuery()
 }
 .filterType.active {
   font-weight: 400;
-  color: #651D32;
+  color: rgb(83, 65, 152);
 }
 .filterType.active:before {
   visibility: visible;

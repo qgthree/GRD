@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import ResizeTransition from '@/components/ResizeTransition.vue';
 import { useVendorStore } from '@/stores/vendorStore';
 import { useFiltersStore } from '@/stores/filtersStore';
 import { useLocationStore } from '@/stores/locationStore';
-import { hasActiveFilterQuery, selectedFilterQueryValues } from '@/utils/query';
+import { compactFilterQueryUpdates, hasActiveFilterQuery, selectedFilterQueryValues } from '@/utils/query';
 import { sortDistricts } from '@/features/locations/utils/districtSorting';
 import {
   selectedDistrictGeoidsFromQuery,
@@ -16,8 +16,10 @@ import home0 from "@/assets/images/home_FILL0.svg";
 import home1 from "@/assets/images/home_FILL1.svg";
 import filters0 from "@/assets/images/filters_FILL0.svg";
 import filters1 from "@/assets/images/filters_FILL1.svg";
+import close from "@/assets/images/close.svg";
 
 const route = useRoute();
+const router = useRouter();
 const vendorStore = useVendorStore();
 const filtersStore = useFiltersStore();
 const locationStore = useLocationStore();
@@ -36,6 +38,9 @@ const formatSummary = (items: string[], fallback: string) => {
 const selectedStates = computed(() => selectedStateNamesFromQuery(route.query, locationStore.states));
 const selectedDistricts = computed(() => selectedDistrictGeoidsFromQuery(route.query, locationStore.districts));
 const selectedServices = computed(() => selectedFilterQueryValues(route.query, 'services'));
+const excludedServices = computed(() => selectedFilterQueryValues(route.query, 'servicesExclude'));
+const hasLocationFilters = computed(() => selectedStates.value.length > 0 || selectedDistricts.value.length > 0);
+const hasSectorFilters = computed(() => selectedServices.value.length > 0 || excludedServices.value.length > 0);
 const formatDistrictCode = (districtCode: string) => {
   const districtNumber = Number(districtCode)
 
@@ -64,6 +69,30 @@ const locationSummary = computed(() => {
 const sectorSummary = computed(() => {
   return formatSummary(selectedServices.value.map(getNaicsLabel), 'any sector');
 });
+
+const clearLocationFilters = () => {
+  void router.push({
+    query: {
+      ...route.query,
+      ...compactFilterQueryUpdates({
+        state: undefined,
+        district: undefined
+      })
+    }
+  })
+}
+
+const clearSectorFilters = () => {
+  void router.push({
+    query: {
+      ...route.query,
+      ...compactFilterQueryUpdates({
+        services: undefined,
+        servicesExclude: undefined
+      })
+    }
+  })
+}
 </script>
 
 <template>
@@ -80,13 +109,33 @@ const sectorSummary = computed(() => {
         <div class="nav_details">
           <button class="nav_text_button" type="button" @click="vendorStore.toggleVendors()">Vendors</button>
           <span> serving </span>
-          <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('location')">
-            {{ locationSummary }}
-          </button>
+          <span class="nav_filter_group">
+            <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('location')">
+              {{ locationSummary }}
+            </button>
+            <button
+              v-if="hasLocationFilters"
+              class="nav_clear_filter"
+              type="button"
+              aria-label="Clear location filter"
+              @click="clearLocationFilters">
+              <img :src="close" alt="" />
+            </button>
+          </span>
           <span> in </span>
-          <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('sector')">
-            {{ sectorSummary }}
-          </button>
+          <span class="nav_filter_group">
+            <button class="nav_text_button" type="button" @click="filtersStore.toggleFiltersView('sector')">
+              {{ sectorSummary }}
+            </button>
+            <button
+              v-if="hasSectorFilters"
+              class="nav_clear_filter"
+              type="button"
+              aria-label="Clear sector filter"
+              @click="clearSectorFilters">
+              <img :src="close" alt="" />
+            </button>
+          </span>
         </div>
         <button class="nav_img" type="button" aria-label="Open filters" @click="filtersStore.toggleFiltersView('location')">
           <img data-fill="0" :src="filters0" alt="" />
@@ -117,8 +166,8 @@ nav {
 .nav_shell {
   border-radius: 6px;
   max-width: calc(100vw - 40px);
-  background-color: #002F6C;
-  color: #fff;
+  background-color: #fff;
+  color: #1f1f1f;
   font-size: 18px;
   font-weight: 400;
   z-index: 500;
@@ -136,6 +185,9 @@ nav {
   background: transparent;
   cursor: pointer;
 }
+.nav_img img {
+  filter: brightness(0) saturate(100%) invert(11%) sepia(1%) saturate(0%) hue-rotate(319deg) brightness(94%) contrast(90%);
+}
 .nav_img img[data-fill="0"],
 .nav_img:hover > img[data-fill="1"] {
   display: block;
@@ -145,20 +197,49 @@ nav {
   display: none;
 }
 .nav_details {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   width: max-content;
   max-width: calc(100vw - 140px);
   padding: 15px 10px;
   margin: 0px;
+}
+.nav_filter_group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .nav_text_button {
   appearance: none;
   border: 0;
   padding: 0;
   background: transparent;
-  color: #fff;
+  color: inherit;
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+.nav_clear_filter {
+  appearance: none;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #dedee1;
+  color: #1f1f1f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+}
+.nav_clear_filter img {
+  display: block;
+  width: 13px;
+  height: 13px;
+  filter: brightness(0) saturate(100%) invert(11%) sepia(1%) saturate(0%) hue-rotate(319deg) brightness(94%) contrast(90%);
 }
 </style>

@@ -83,7 +83,7 @@ const hasSectorFilter = computed(() => selectedFilterQueryValues(route.query, 's
   font-size: 14px;
 }
 .component_header {
-  background-color: #452145;
+  background-color: rgb(83, 65, 152);
   grid-template-columns: 1fr;
   margin: 0;
 }
@@ -133,7 +133,7 @@ const hasSectorFilter = computed(() => selectedFilterQueryValues(route.query, 's
   text-align: left;
 }
 .note {
-  color: #651D32;
+  color: rgb(83, 65, 152);
   margin-top: 15px;
   font-style: italic;
 }

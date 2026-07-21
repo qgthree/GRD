@@ -5,7 +5,7 @@
   max-width: 300px;
 }
 .tooltip .tooltip-inner {
-  background: #fff7e6;
+  background: var(--color-tooltip-background);
   color: #1a0033;
   letter-spacing: 1.3px;
   font-weight: bold;
@@ -24,7 +24,7 @@
   border-style: solid;
   position: absolute;
   margin: 5px;
-  border-color: #fff7e6;
+  border-color: var(--color-tooltip-background);
   z-index: 1;
   -webkit-box-shadow: 0px 0px 32px -10px rgba(0,0,0,0.59);
   -moz-box-shadow: 0px 0px 32px -10px rgba(0,0,0,0.59);

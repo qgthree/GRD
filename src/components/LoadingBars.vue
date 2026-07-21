@@ -11,17 +11,19 @@
   display: block;
   width: 48px;
   height: 24px;
-  fill: currentColor;
+  color: var(--color-purple);
 }
 
 .loading-bars rect {
   animation: loading-bars 0.75s ease-in-out infinite;
+  fill: currentColor;
   transform-box: fill-box;
   transform-origin: center bottom;
 }
 
 .loading-bars rect:nth-child(2) {
   animation-delay: 0.1s;
+  fill: var(--color-light-purple);
 }
 
 .loading-bars rect:nth-child(3) {

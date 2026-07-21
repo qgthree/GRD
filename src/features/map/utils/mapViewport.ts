@@ -1,7 +1,7 @@
 import L from 'leaflet'
 import type { BoundaryStyleSetting, DistrictFeature, LeafSettings } from '@/features/map/types'
 
-export const heatmapBoundaryColor = '#651D32'
+export const heatmapBoundaryColor = 'rgb(55, 42, 112)'
 export const alaskaStateName = 'Alaska'
 
 const alaskaViewport = {

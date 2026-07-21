@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
-  background-color: #651D32;
+  background-color: rgb(83, 65, 152);
   color: #fff;
   padding: 12px 15px;
   text-align: left;
@@ -39,11 +39,12 @@
 .filter-selected-count {
   display: inline-grid;
   place-items: center;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background-color: #651D32;
-  color: #fff;
+  min-width: 24px;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background-color: #dedee1;
+  color: #1f1f1f;
   font-size: 13px;
   line-height: 1;
 }

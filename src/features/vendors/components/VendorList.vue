@@ -174,7 +174,7 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
     margin: 20px;
     font-style: italic;
     font-size: 14px;
-    color: #651D32;
+    color: rgb(83, 65, 152);
   }
 
   .vendor-scroll {
@@ -213,7 +213,7 @@ const toggleVisibility = (key: number, e: MouseEvent) => {
   }
   .list-data_title {
     font-weight: 400;
-    color: #651D32;
+    color: rgb(83, 65, 152);
     margin-right: 10px;
   }
   .list-data_details {

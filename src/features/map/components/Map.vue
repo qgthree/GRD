@@ -23,7 +23,7 @@ const { isLoading } = useBoundaryMap();
   left: 50%;
   bottom: 32px;
   z-index: 500;
-  color: #1a0033;
+  color: var(--color-purple);
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -35,7 +35,7 @@ const { isLoading } = useBoundaryMap();
 /* Update leaflet tooltip styles (QG) */
 
 .leaflet-tooltip {
-	background-color: #fff7e6;
+	background-color: var(--color-tooltip-background);
 	color: #1a0033;
 	letter-spacing: 1.3px;
 	font-weight: 400;
@@ -45,23 +45,23 @@ const { isLoading } = useBoundaryMap();
 	border-radius: 16px;
 	padding: 8px 12px;
 	box-shadow: 0 0 32px -10px rgba(0, 0, 0, .59);
-  border-color: #fff7e6;
+  border-color: var(--color-tooltip-background);
 }
 
 .leaflet-tooltip-top:before {
-	border-top-color: #fff7e6;
+	border-top-color: var(--color-tooltip-background);
 }
 
 .leaflet-tooltip-bottom:before {
-	border-bottom-color: #fff7e6;
+	border-bottom-color: var(--color-tooltip-background);
 }
 
 .leaflet-tooltip-left:before {
-	border-left-color: #fff7e6;
+	border-left-color: var(--color-tooltip-background);
 }
 
 .leaflet-tooltip-right:before {
-	border-right-color: #fff7e6;
+	border-right-color: var(--color-tooltip-background);
 }
 
 .tip-title {
